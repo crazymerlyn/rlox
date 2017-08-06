@@ -4,6 +4,10 @@ use std::fs::File;
 use std::io::Result;
 use std::io::{self, Write, Read, BufRead};
 
+use std::process;
+
+use scanner::Scanner;
+
 pub struct Interpreter {
     had_error: bool,
 }
@@ -21,6 +25,7 @@ impl Interpreter {
         io::stdout().flush()?;
         for line in stdin.lock().lines() {
             self.run(line.unwrap());
+            self.had_error = false;
             print!("> ");
             io::stdout().flush()?;
         }
@@ -33,12 +38,14 @@ impl Interpreter {
         let mut file = File::open(path)?;
         file.read_to_string(&mut s)?;
         self.run(s);
+        if self.had_error { process::exit(65); };
         Ok(())
     }
 
     fn run<S: AsRef<str>>(&mut self, code: S) {
-        for word in code.as_ref().split_whitespace() {
-            println!("{}", word);
+        let scanner = Scanner::new(code);
+        for word in scanner.scan_tokens().unwrap_or(vec![]) {
+            println!("{:?}", word);
         }
     }
 

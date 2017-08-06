@@ -1,6 +1,8 @@
 [package]
+authors = ["CrazyMerlyn <crazy.d.merlyn@gmail.com>"]
 name = "rlox"
 version = "0.1.0"
-authors = ["CrazyMerlyn <crazy.d.merlyn@gmail.com>"]
 
 [dependencies]
+error-chain = "0.11.0-rc.2"
+lazy_static = "0.2.8"
