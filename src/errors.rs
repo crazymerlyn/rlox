@@ -1,3 +1,5 @@
+#![allow(unknown_lints)]
+
 error_chain! {
     errors {
         ScanError(line: usize, t: &'static str) {
