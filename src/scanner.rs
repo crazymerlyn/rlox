@@ -26,7 +26,7 @@ lazy_static! {
     };
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     // Single character tokens
     LeftParen, RightParen, LeftBrace, RightBrace,
@@ -49,11 +49,11 @@ pub enum TokenType {
 
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
-    ty: TokenType,
-    lexeme: String,
-    line: usize,
+    pub ty: TokenType,
+    pub lexeme: String,
+    pub line: usize,
 }
 
 impl Token {
@@ -80,7 +80,7 @@ impl Scanner {
             self.start = self.current;
             self.scan_token()?;
         }
-        self.tokens.push(Token::new(TokenType::Eof, "", self.line));
+        self.tokens.push(Token::new(TokenType::Eof, "Eof", self.line));
         Ok(self.tokens)
     }
 

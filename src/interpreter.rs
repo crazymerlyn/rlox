@@ -7,6 +7,7 @@ use std::io::{self, Write, Read, BufRead};
 use std::process;
 
 use scanner::Scanner;
+use parser::Parser;
 
 pub struct Interpreter {
     had_error: bool,
@@ -44,16 +45,14 @@ impl Interpreter {
 
     fn run<S: AsRef<str>>(&mut self, code: S) {
         let scanner = Scanner::new(code);
-        let tokens = match scanner.scan_tokens() {
+        let expr = match scanner.scan_tokens().and_then(|tokens| Parser::new(tokens).parse()) {
             Ok(x) => x,
             Err(e) => {
                 println!("{}", e);
                 return;
             }
         };
-        for word in tokens {
-            println!("{:?}", word);
-        }
+        println!("{:?}", expr);
     }
 
     fn error<S: AsRef<str>>(&mut self, line: usize, message: S) -> Result<()> {

@@ -9,6 +9,8 @@ use interpreter::Interpreter;
 mod errors;
 
 mod scanner;
+mod parser;
+mod ast;
 
 fn main() {
     if env::args().len() > 1 {
