@@ -125,7 +125,7 @@ impl Scanner {
             c if is_alpha(c) => self.identifier(),
             ' ' | '\t' | '\r' => {},
             '\n' => self.line += 1,
-            _ => return Err(ErrorKind::ScanError(self.line, "").into()),
+            _ => return Err(ErrorKind::ScanError(self.line, format!("Unexpected character: {}", c)).into()),
         }
         Ok(())
     }
@@ -138,7 +138,7 @@ impl Scanner {
         }
 
         if self.is_at_end() {
-            self.error("Unterminated string.")?;
+            self.error("Unterminated string.".to_string())?;
         }
 
         self.advance(); // Closing "
@@ -169,7 +169,7 @@ impl Scanner {
         self.add_token(KEYWORDS.get(&text).cloned().unwrap_or(TokenType::Identifier));
     }
 
-    fn error(&self, s: &'static str) -> Result<()> {
+    fn error(&self, s: String) -> Result<()> {
         return Err(From::from(ErrorKind::ScanError(self.line, s)));
     }
 

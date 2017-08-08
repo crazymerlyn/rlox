@@ -44,7 +44,14 @@ impl Interpreter {
 
     fn run<S: AsRef<str>>(&mut self, code: S) {
         let scanner = Scanner::new(code);
-        for word in scanner.scan_tokens().unwrap_or(vec![]) {
+        let tokens = match scanner.scan_tokens() {
+            Ok(x) => x,
+            Err(e) => {
+                println!("{}", e);
+                return;
+            }
+        };
+        for word in tokens {
             println!("{:?}", word);
         }
     }

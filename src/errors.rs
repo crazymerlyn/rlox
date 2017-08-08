@@ -2,7 +2,7 @@
 
 error_chain! {
     errors {
-        ScanError(line: usize, t: &'static str) {
+        ScanError(line: usize, t: String) {
             description("Invalid program")
             display("Error at line {}: {}", line, t)
         }
