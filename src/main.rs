@@ -11,9 +11,10 @@ mod errors;
 mod scanner;
 mod parser;
 mod ast;
+mod evaluable;
 
 fn main() {
-    if env::args().len() > 1 {
+    if env::args().len() > 2 {
         println!("Usage: rlox [script]");
     } else if let Some(script) = env::args().nth(1) {
         Interpreter::new().run_path(script).unwrap();
