@@ -52,7 +52,7 @@ impl Interpreter {
                 return;
             }
         };
-        println!("{:?}", expr);
+        println!("{}", expr);
     }
 
     fn error<S: AsRef<str>>(&mut self, line: usize, message: S) -> Result<()> {

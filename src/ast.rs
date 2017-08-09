@@ -1,5 +1,6 @@
 use scanner::TokenType;
 use std::convert::From;
+use std::fmt;
 
 #[derive(Debug)]
 pub enum UnaryOperator {
@@ -13,6 +14,15 @@ impl From<TokenType> for UnaryOperator {
             TokenType::Bang => UnaryOperator::Bang,
             TokenType::Minus => UnaryOperator::Minus,
             _ => panic!("Invalid unary operator {:?}", token)
+        }
+    }
+}
+
+impl fmt::Display for UnaryOperator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            UnaryOperator::Bang => write!(f, "!"),
+            UnaryOperator::Minus => write!(f, "-"),
         }
     }
 }
@@ -53,10 +63,35 @@ impl From<TokenType> for BinaryOperator {
     }
 }
 
+impl fmt::Display for BinaryOperator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            BinaryOperator::Equal => write!(f, "="),
+            BinaryOperator::EqualEqual => write!(f, "=="),
+            BinaryOperator::Bang => write!(f, "!"),
+            BinaryOperator::BangEqual => write!(f, "!="),
+            BinaryOperator::Less => write!(f, "<"),
+            BinaryOperator::LessEqual => write!(f, "<="),
+            BinaryOperator::Greater => write!(f, ">"),
+            BinaryOperator::GreaterEqual => write!(f, ">="),
+            BinaryOperator::Minus => write!(f, "-"),
+            BinaryOperator::Plus => write!(f, "+"),
+            BinaryOperator::Slash => write!(f, "/"),
+            BinaryOperator::Star => write!(f, "*"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct UnaryExpr {
     pub op: UnaryOperator,
     pub expr: Expr,
+}
+
+impl fmt::Display for UnaryExpr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}", self.op, self.expr)
+    }
 }
 
 #[derive(Debug)]
@@ -66,9 +101,21 @@ pub struct BinaryExpr {
     pub right: Expr,
 }
 
+impl fmt::Display for BinaryExpr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({} {} {})", self.op, self.left, self.right)
+    }
+}
+
 #[derive(Debug)]
 pub struct Grouping {
     pub expr: Expr,
+}
+
+impl fmt::Display for Grouping {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.expr)
+    }
 }
 
 #[derive(Debug)]
@@ -79,6 +126,17 @@ pub enum Value {
     String(String),
 }
 
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Value::Nil => write!(f, "nil"),
+            Value::Bool(b) => write!(f, "{}", b),
+            Value::Number(n) => write!(f, "{}", n),
+            Value::String(ref s) => write!(f, "{}", s),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Expr {
     Literal(Value),
@@ -86,3 +144,16 @@ pub enum Expr {
     Binary(Box<BinaryExpr>),
     Grouping(Box<Grouping>),
 }
+
+
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Expr::Literal(ref v) => write!(f, "{}", v),
+            Expr::Unary(ref v) => write!(f, "{}", v),
+            Expr::Binary(ref v) => write!(f, "{}", v),
+            Expr::Grouping(ref v) => write!(f, "{}", v),
+        }
+    }
+}
+
