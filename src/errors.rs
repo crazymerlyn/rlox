@@ -12,6 +12,10 @@ error_chain! {
             description("Invalid program")
             display("Error at line {} at '{}': {}", tok.line, tok.lexeme, t)
         }
+        EvaluateError(t: String) {
+            description("Invalid expression")
+            display("Error: {}", t)
+        }
     }
     foreign_links {
         IO(::std::io::Error);

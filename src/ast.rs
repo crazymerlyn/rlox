@@ -2,7 +2,7 @@ use scanner::TokenType;
 use std::convert::From;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UnaryOperator {
     Bang,
     Minus,
@@ -27,11 +27,11 @@ impl fmt::Display for UnaryOperator {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BinaryOperator {
     Equal,
     EqualEqual,
-    Bang,
+    //Bang,
     BangEqual,
     Less,
     LessEqual,
@@ -48,7 +48,7 @@ impl From<TokenType> for BinaryOperator {
         match token {
             TokenType::Equal => BinaryOperator::Equal,
             TokenType::EqualEqual => BinaryOperator::EqualEqual,
-            TokenType::Bang => BinaryOperator::Bang,
+            //TokenType::Bang => BinaryOperator::Bang,
             TokenType::BangEqual => BinaryOperator::BangEqual,
             TokenType::Less => BinaryOperator::Less,
             TokenType::LessEqual => BinaryOperator::LessEqual,
@@ -68,7 +68,7 @@ impl fmt::Display for BinaryOperator {
         match *self {
             BinaryOperator::Equal => write!(f, "="),
             BinaryOperator::EqualEqual => write!(f, "=="),
-            BinaryOperator::Bang => write!(f, "!"),
+            //BinaryOperator::Bang => write!(f, "!"),
             BinaryOperator::BangEqual => write!(f, "!="),
             BinaryOperator::Less => write!(f, "<"),
             BinaryOperator::LessEqual => write!(f, "<="),
@@ -82,7 +82,7 @@ impl fmt::Display for BinaryOperator {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnaryExpr {
     pub op: UnaryOperator,
     pub expr: Expr,
@@ -94,7 +94,7 @@ impl fmt::Display for UnaryExpr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BinaryExpr {
     pub left: Expr,
     pub op: BinaryOperator,
@@ -107,7 +107,7 @@ impl fmt::Display for BinaryExpr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Grouping {
     pub expr: Expr,
 }
@@ -118,7 +118,7 @@ impl fmt::Display for Grouping {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Nil,
     Bool(bool),
@@ -132,12 +132,12 @@ impl fmt::Display for Value {
             Value::Nil => write!(f, "nil"),
             Value::Bool(b) => write!(f, "{}", b),
             Value::Number(n) => write!(f, "{}", n),
-            Value::String(ref s) => write!(f, "{}", s),
+            Value::String(ref s) => write!(f, "\"{}\"", s),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Literal(Value),
     Unary(Box<UnaryExpr>),
