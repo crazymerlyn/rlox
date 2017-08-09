@@ -54,15 +54,21 @@ impl Evaluable for BinaryExpr {
                 if let Value::Number(l) = left {
                     if let Value::Number(r) = right {
                         Ok(Value::Number(l + r))
+                    } else if let Value::String(r) = right {
+                        Ok(Value::String(format!("{}{}", l, r)))
                     } else {
                         Err(ErrorKind::EvaluateError(format!("Can't add {} to a number", right)).into())
                     }
                 } else if let Value::String(l) = left {
                     if let Value::String(r) = right {
                         Ok(Value::String(l + &r))
+                    } else if let Value::Number(r) = right {
+                        Ok(Value::String(format!("{}{}", l, r)))
                     } else {
-                        Err(ErrorKind::EvaluateError(format!("Can't add {} to a string", right)).into())
+                        Ok(Value::String(format!("{}{}", l, right)))
                     }
+                } else if let Value::String(r) = right {
+                    Ok(Value::String(format!("{}{}", left, r)))
                 } else {
                     Err(ErrorKind::EvaluateError(format!("Can't add {} and {}", left, right)).into())
                 }
