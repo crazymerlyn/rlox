@@ -12,6 +12,7 @@ mod scanner;
 mod parser;
 mod ast;
 mod evaluable;
+mod interpretable;
 
 fn main() {
     if env::args().len() > 2 {

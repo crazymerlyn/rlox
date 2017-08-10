@@ -8,7 +8,7 @@ use std::process;
 
 use scanner::Scanner;
 use parser::Parser;
-use evaluable::Evaluable;
+use interpretable::Interpretable;
 
 pub struct Interpreter {
     had_error: bool,
@@ -46,12 +46,8 @@ impl Interpreter {
 
     fn run<S: AsRef<str>>(&mut self, code: S) {
         let scanner = Scanner::new(code);
-        let value = match scanner.scan_tokens()
-            .and_then(|tokens| Parser::new(tokens).parse())
-            .and_then(|expr| {
-                println!("{}", expr);
-                expr.evaluate()
-            }) {
+        let stmts = match scanner.scan_tokens()
+            .and_then(|tokens| Parser::new(tokens).parse()) {
             Ok(x) => x,
             Err(e) => {
                 self.had_error = true;
@@ -59,7 +55,10 @@ impl Interpreter {
                 return;
             }
         };
-        println!("{}", value);
+
+        for stmt in stmts {
+            stmt.interpret();
+        }
     }
 
     fn error<S: AsRef<str>>(&mut self, line: usize, message: S) -> Result<()> {

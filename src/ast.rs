@@ -157,3 +157,8 @@ impl fmt::Display for Expr {
     }
 }
 
+pub enum Stmt {
+    Expr(Expr),
+    Print(Expr),
+}
+
