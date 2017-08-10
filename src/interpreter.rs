@@ -6,18 +6,25 @@ use std::io::{self, Write, Read, BufRead};
 
 use std::process;
 
+use std::collections::HashMap;
+
 use scanner::Scanner;
 use parser::Parser;
 use interpretable::Interpretable;
+use ast::Value;
+
+pub type Environment = HashMap<String, Value>;
 
 pub struct Interpreter {
     had_error: bool,
+    env: Environment,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
             had_error: false,
+            env: Environment::new(),
         }
     }
 
@@ -50,24 +57,28 @@ impl Interpreter {
             .and_then(|tokens| Parser::new(tokens).parse()) {
             Ok(x) => x,
             Err(e) => {
-                self.had_error = true;
-                write!(io::stderr(), "{}\n", e);
+                self.error(e.to_string());
                 return;
             }
         };
 
         for stmt in stmts {
-            stmt.interpret();
+            if self.had_error {
+                break
+            }
+            match stmt.interpret(&mut self.env) {
+                Ok(_) => {},
+                Err(e) => self.error(format!("{}", e)),
+            }
         }
     }
 
-    fn error<S: AsRef<str>>(&mut self, line: usize, message: S) -> Result<()> {
-        self.report(line, "", message.as_ref())
+    fn error<S: AsRef<str>>(&mut self, message: S) {
+        self.report("", message.as_ref())
     }
 
-    fn report<S: AsRef<str>>(&mut self, line: usize, context: S, message: S) -> Result<()> {
-        write!(io::stderr(), "[line {}] Error{}: {}", line, context.as_ref(), message.as_ref())?;
+    fn report<S: AsRef<str>>(&mut self, context: S, message: S) {
+        writeln!(io::stderr(), "{}{}", context.as_ref(), message.as_ref()).unwrap();
         self.had_error = true;
-        Ok(())
     }
 }

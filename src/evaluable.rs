@@ -1,26 +1,42 @@
 use ast::*;
 use errors::{Result, ErrorKind};
+use interpreter::Environment;
 
 pub trait Evaluable {
-    fn evaluate(&self) -> Result<Value>;
+    fn evaluate(&self, env: &mut Environment) -> Result<Value>;
 }
 
 impl Evaluable for Expr {
-    fn evaluate(&self) -> Result<Value> {
+    fn evaluate(&self, env: &mut Environment) -> Result<Value> {
         match *self {
             Expr::Literal(ref v) => Ok(v.clone()),
-            Expr::Unary(ref u) => u.evaluate(),
-            Expr::Binary(ref b) => b.evaluate(),
-            Expr::Grouping(ref g) => g.evaluate(),
+            Expr::Unary(ref u) => u.evaluate(env),
+            Expr::Binary(ref b) => b.evaluate(env),
+            Expr::Grouping(ref g) => g.evaluate(env),
+            Expr::Variable(ref id) => {
+                match env.get(&id.name.lexeme) {
+                    Some(v) => Ok(v.clone()),
+                    None => Err(ErrorKind::EvaluateError(format!("Undefined variable: {}", id.name.lexeme)).into()),
+                }
+            },
+            Expr::Assign(ref id, ref e) => {
+                if env.get(&id.name.lexeme) == None {
+                    Err(ErrorKind::EvaluateError(format!("Undefined variable: {}", id.name.lexeme)).into())
+                } else {
+                    let value = e.evaluate(env)?;
+                    env.insert(id.name.lexeme.clone(), value.clone());
+                    Ok(value)
+                }
+            }
         }
     }
 }
 
 impl Evaluable for UnaryExpr {
-    fn evaluate(&self) -> Result<Value> {
+    fn evaluate(&self, env: &mut Environment) -> Result<Value> {
         match self.op {
-            UnaryOperator::Bang => Ok(Value::Bool(!is_truthy(&self.expr.evaluate()?))),
-            UnaryOperator::Minus => match self.expr.evaluate()? {
+            UnaryOperator::Bang => Ok(Value::Bool(!is_truthy(&self.expr.evaluate(env)?))),
+            UnaryOperator::Minus => match self.expr.evaluate(env)? {
                 Value::Number(n) => Ok(Value::Number(-n)),
                 x => Err(ErrorKind::EvaluateError(format!("Can't negate {}", x)).into()),
             }
@@ -29,9 +45,9 @@ impl Evaluable for UnaryExpr {
 }
 
 impl Evaluable for BinaryExpr {
-    fn evaluate(&self) -> Result<Value> {
-        let left = self.left.evaluate()?;
-        let right = self.right.evaluate()?;
+    fn evaluate(&self, env: &mut Environment) -> Result<Value> {
+        let left = self.left.evaluate(env)?;
+        let right = self.right.evaluate(env)?;
 
         match self.op {
             BinaryOperator::Minus | BinaryOperator::Slash | BinaryOperator::Star |
@@ -96,8 +112,8 @@ fn is_truthy(value: &Value) -> bool {
 }
 
 impl Evaluable for Grouping {
-    fn evaluate(&self) -> Result<Value> {
-        self.expr.evaluate()
+    fn evaluate(&self, env: &mut Environment) -> Result<Value> {
+        self.expr.evaluate(env)
     }
 }
 

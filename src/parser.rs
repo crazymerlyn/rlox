@@ -27,13 +27,41 @@ impl Parser {
     pub fn parse(&mut self) -> Result<Vec<Stmt>> {
         let mut statements = vec![];
         while !self.is_at_end() {
-            statements.push(self.statement()?);
+            statements.push(self.declaration()?);
         }
         Ok(statements)
     }
 
+    fn declaration(&mut self) -> Result<Stmt> {
+        let res = if self.match_any(&[TokenType::Var]) {
+            self.var_declaration()
+        } else {
+            self.statement()
+        };
+        match res {
+            Ok(stmt) => Ok(stmt),
+            e => {
+                self.synchronize();
+                e
+            }
+        }
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt> {
+        let name = self.consume(TokenType::Identifier, "Expect variable name.".to_string())?;
+        let mut initializer = Expr::Literal(Value::Nil);
+        if self.match_any(&[TokenType::Equal]) {
+            initializer = self.expression()?;
+        }
+
+        if !self.is_at_end() {
+            self.consume(TokenType::Semicolon, "Expect ';' after variable declaration.".to_string())?;
+        }
+        Ok(Stmt::Decl(Identifier { name }, initializer))
+    }
+
     fn statement(&mut self) -> Result<Stmt> {
-        if (self.match_any(&[TokenType::Print])) {
+        if self.match_any(&[TokenType::Print]) {
             self.print_statement()
         } else {
             self.expression_statement()
@@ -57,7 +85,21 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expr> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Expr> {
+        let expr = self.equality()?;
+        if self.match_any(&[TokenType::Equal]) {
+            let equals = self.previous().clone();
+            let value = self.assignment()?;
+            match expr {
+                Expr::Variable(id) => Ok(Expr::Assign(id, Box::new(value))),
+                x => Err(ErrorKind::ParseError(equals, format!("Invalid assignment target: {}", x)).into())
+            }
+        } else {
+            Ok(expr)
+        }
     }
 
     fn equality(&mut self) -> Result<Expr> {
@@ -96,6 +138,9 @@ impl Parser {
         if self.match_any(&[TokenType::True]) {
             return Ok(Expr::Literal(Value::Bool(true)));
         }
+        if self.match_any(&[TokenType::Identifier]) {
+            return Ok(Expr::Variable(Identifier { name: self.previous().clone() }));
+        }
         let ty = self.peek().ty.clone();
         match ty {
             TokenType::Number(n) => {
@@ -119,8 +164,8 @@ impl Parser {
     }
 
     fn synchronize(&mut self) {
-        self.advance();
         while !self.is_at_end() {
+            self.advance();
             if self.previous().ty == TokenType::Semicolon {
                 return;
             }
@@ -131,14 +176,14 @@ impl Parser {
                 }
                 _ => {}
             }
-            self.advance();
         }
     }
 
-    fn consume(&mut self, ty: TokenType, error: String) -> Result<()> {
+    fn consume(&mut self, ty: TokenType, error: String) -> Result<Token> {
         if self.check(&ty) {
+            let result = self.peek().clone();
             self.advance();
-            Ok(())
+            Ok(result)
         } else {
             Err(ErrorKind::ParseError(self.peek().clone(), error).into())
         }

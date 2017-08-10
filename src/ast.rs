@@ -1,4 +1,4 @@
-use scanner::TokenType;
+use scanner::{TokenType, Token};
 use std::convert::From;
 use std::fmt;
 
@@ -138,11 +138,18 @@ impl fmt::Display for Value {
 }
 
 #[derive(Debug, Clone)]
+pub struct Identifier {
+    pub name: Token,
+}
+
+#[derive(Debug, Clone)]
 pub enum Expr {
     Literal(Value),
     Unary(Box<UnaryExpr>),
     Binary(Box<BinaryExpr>),
     Grouping(Box<Grouping>),
+    Variable(Identifier),
+    Assign(Identifier, Box<Expr>),
 }
 
 
@@ -153,6 +160,8 @@ impl fmt::Display for Expr {
             Expr::Unary(ref v) => write!(f, "{}", v),
             Expr::Binary(ref v) => write!(f, "{}", v),
             Expr::Grouping(ref v) => write!(f, "{}", v),
+            Expr::Variable(ref v) => write!(f, "{}", v.name.lexeme),
+            Expr::Assign(ref id, ref v) => write!(f, "{} = {}", id.name.lexeme, v),
         }
     }
 }
@@ -160,5 +169,6 @@ impl fmt::Display for Expr {
 pub enum Stmt {
     Expr(Expr),
     Print(Expr),
+    Decl(Identifier, Expr),
 }
 
