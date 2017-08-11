@@ -121,5 +121,18 @@ impl Environment {
         let n = self.maps.len();
         self.maps[n-1].insert(s, v);
     }
+
+    pub fn update(&mut self, s: String, v: Value) {
+        for map in self.maps.iter_mut().rev() {
+            match map.get(&s) {
+                Some(_) => {
+                    map.insert(s.clone(), v.clone());
+                    return;
+                }
+                _ => {}
+            }
+        }
+        panic!("Trying to update non-existant variable");
+    }
 }
 

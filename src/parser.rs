@@ -66,6 +66,10 @@ impl Parser {
             self.print_statement()
         } else if self.match_any(&[TokenType::LeftBrace]) {
             self.block()
+        } else if self.match_any(&[TokenType::While]) {
+            self.while_stmt()
+        } else if self.match_any(&[TokenType::For]) {
+            self.for_stmt()
         } else if self.match_any(&[TokenType::If]) {
             self.if_statement()
         } else {
@@ -88,6 +92,51 @@ impl Parser {
         }
         self.consume(TokenType::RightBrace, "Expect '}' after block.".to_string())?;
         Ok(Stmt::Block(stmts))
+    }
+
+    fn while_stmt(&mut self) -> Result<Stmt> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'while'.")?;
+        let cond = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')' after while condition.")?;
+        let stmt = self.statement()?;
+        Ok(Stmt::While(cond, Box::new(stmt)))
+    }
+
+    fn for_stmt(&mut self) -> Result<Stmt> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.")?;
+        let initializer = if self.match_any(&[TokenType::Semicolon]) { 
+            None
+        } else if self.match_any(&[TokenType::Var]) {
+            Some(self.var_declaration()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+        let cond = if !self.check(&TokenType::Semicolon) {
+            self.expression()?
+        } else {
+            Expr::Literal(Value::Bool(true))
+        };
+        self.consume(TokenType::Semicolon, "Expect ';' after loop condition.")?;
+
+        let inc = if !self.check(&TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::RightParen, "Expect ')' after for clauses.")?;
+        let mut body = self.statement()?;
+
+        if let Some(inc) = inc {
+            body = Stmt::Block(vec![body, Stmt::Expr(inc)]);
+        }
+
+        body = Stmt::While(cond, Box::new(body));
+
+        if let Some(init) = initializer {
+            body = Stmt::Block(vec![init, body]);
+        }
+
+        Ok(body)
     }
 
     fn if_statement(&mut self) -> Result<Stmt> {

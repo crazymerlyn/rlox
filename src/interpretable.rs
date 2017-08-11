@@ -45,6 +45,12 @@ impl Interpretable for Stmt {
                     }
                 }
             }
+            Stmt::While(ref cond, ref stmt) => {
+                while cond.evaluate(env)?.is_truthy() {
+                    stmt.interpret(env)?;
+                }
+                Ok(Value::Nil)
+            }
         }
     }
 }

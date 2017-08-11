@@ -25,7 +25,7 @@ impl Evaluable for Expr {
                     Err(ErrorKind::EvaluateError(format!("Undefined variable: {}", id.name.lexeme)).into())
                 } else {
                     let value = e.evaluate(env)?;
-                    env.insert(id.name.lexeme.clone(), value.clone());
+                    env.update(id.name.lexeme.clone(), value.clone());
                     Ok(value)
                 }
             }
