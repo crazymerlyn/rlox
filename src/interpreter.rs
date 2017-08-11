@@ -13,8 +13,6 @@ use parser::Parser;
 use interpretable::Interpretable;
 use ast::Value;
 
-pub type Environment = HashMap<String, Value>;
-
 pub struct Interpreter {
     had_error: bool,
     env: Environment,
@@ -33,7 +31,7 @@ impl Interpreter {
         print!("> ");
         io::stdout().flush()?;
         for line in stdin.lock().lines() {
-            self.run(line.unwrap());
+            self.run(line.unwrap(), true);
             self.had_error = false;
             print!("> ");
             io::stdout().flush()?;
@@ -46,12 +44,12 @@ impl Interpreter {
         let mut s = String::new();
         let mut file = File::open(path)?;
         file.read_to_string(&mut s)?;
-        self.run(s);
+        self.run(s, false);
         if self.had_error { process::exit(65); };
         Ok(())
     }
 
-    fn run<S: AsRef<str>>(&mut self, code: S) {
+    fn run<S: AsRef<str>>(&mut self, code: S, print_value: bool) {
         let scanner = Scanner::new(code);
         let stmts = match scanner.scan_tokens()
             .and_then(|tokens| Parser::new(tokens).parse()) {
@@ -67,7 +65,11 @@ impl Interpreter {
                 break
             }
             match stmt.interpret(&mut self.env) {
-                Ok(_) => {},
+                Ok(v) => {
+                    if print_value && Value::Nil != v {
+                        println!("{}", v);
+                    }
+                }
                 Err(e) => self.error(format!("{}", e)),
             }
         }
@@ -82,3 +84,42 @@ impl Interpreter {
         self.had_error = true;
     }
 }
+
+pub struct Environment {
+    maps: Vec<HashMap<String, Value>>,
+}
+
+impl Environment {
+    pub fn new() -> Environment {
+        Environment {
+            maps: vec![HashMap::new()],
+        }
+    }
+
+    pub fn push_local_scope(&mut self) {
+        self.maps.push(HashMap::new());
+    }
+
+    pub fn pop_scope(&mut self) {
+        if !self.maps.is_empty() {
+            self.maps.pop();
+        } else {
+            panic!("Trying to pop non-existant scope!");
+        }
+    }
+
+    pub fn get(&self, s: &str) -> Option<&Value> {
+        for map in self.maps.iter().rev() {
+            if let Some(v) = map.get(s) {
+                return Some(v)
+            }
+        }
+        None
+    }
+
+    pub fn insert(&mut self, s: String, v: Value) {
+        let n = self.maps.len();
+        self.maps[n-1].insert(s, v);
+    }
+}
+

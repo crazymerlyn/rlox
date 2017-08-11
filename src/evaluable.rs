@@ -52,8 +52,8 @@ impl Evaluable for BinaryExpr {
         match self.op {
             BinaryOperator::Minus | BinaryOperator::Slash | BinaryOperator::Star |
             BinaryOperator::Less | BinaryOperator::Greater | BinaryOperator::LessEqual | BinaryOperator::GreaterEqual => {
-                let left = number(left)?;
-                let right = number(right)?;
+                let left = number(&left)?;
+                let right = number(&right)?;
                 let value = match self.op {
                     BinaryOperator::Minus => Value::Number(left - right),
                     BinaryOperator::Star => Value::Number(left * right),
@@ -96,8 +96,8 @@ impl Evaluable for BinaryExpr {
     }
 }
 
-fn number(value: Value) -> Result<f64> {
-    match value {
+fn number(value: &Value) -> Result<f64> {
+    match *value {
         Value::Number(n) => Ok(n),
         _ => Err(ErrorKind::EvaluateError(format!("Expected a number, instead got: {}", value)).into())
     }

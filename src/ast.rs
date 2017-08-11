@@ -170,5 +170,6 @@ pub enum Stmt {
     Expr(Expr),
     Print(Expr),
     Decl(Identifier, Expr),
+    Block(Vec<Stmt>),
 }
 

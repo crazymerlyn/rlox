@@ -1,6 +1,6 @@
 use evaluable::Evaluable;
 use ast::*;
-use errors::{Result, ErrorKind};
+use errors::Result;
 use interpreter::Environment;
 
 pub trait Interpretable {
@@ -11,8 +11,7 @@ impl Interpretable for Stmt {
     fn interpret(&self, env: &mut Environment) -> Result<Value> {
         match *self {
             Stmt::Expr(ref expr) => {
-                let _ = expr.evaluate(env)?;
-                Ok(Value::Nil)
+                expr.evaluate(env)
             }
             Stmt::Print(ref expr) => {
                 match expr.evaluate(env)? {
@@ -24,6 +23,14 @@ impl Interpretable for Stmt {
             Stmt::Decl(ref id, ref expr) => {
                 let value = expr.evaluate(env)?;
                 env.insert(id.name.lexeme.clone(), value);
+                Ok(Value::Nil)
+            }
+            Stmt::Block(ref stmts) => {
+                env.push_local_scope();
+                for stmt in stmts {
+                    stmt.interpret(env)?;
+                }
+                env.pop_scope();
                 Ok(Value::Nil)
             }
         }

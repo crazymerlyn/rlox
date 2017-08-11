@@ -170,7 +170,7 @@ impl Scanner {
     }
 
     fn error(&self, s: String) -> Result<()> {
-        return Err(From::from(ErrorKind::ScanError(self.line, s)));
+        Err(From::from(ErrorKind::ScanError(self.line, s)))
     }
 
     fn advance(&mut self) -> char {
@@ -186,7 +186,7 @@ impl Scanner {
         self.src.chars().nth(self.current+1)
     }
 
-    fn is_at_end(&mut self) -> bool {
+    fn is_at_end(&self) -> bool {
         match self.peek() {
             Some(_) => false,
             _ => true
@@ -197,9 +197,10 @@ impl Scanner {
         let next_char = self.peek();
         if Some(expected) == next_char {
             self.current += 1;
-            return true;
+            true
+        } else {
+            false
         }
-        return false;
     }
 
     fn add_token(&mut self, ty: TokenType) {

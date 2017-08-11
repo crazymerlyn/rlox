@@ -49,10 +49,11 @@ impl Parser {
 
     fn var_declaration(&mut self) -> Result<Stmt> {
         let name = self.consume(TokenType::Identifier, "Expect variable name.".to_string())?;
-        let mut initializer = Expr::Literal(Value::Nil);
-        if self.match_any(&[TokenType::Equal]) {
-            initializer = self.expression()?;
-        }
+        let initializer = if self.match_any(&[TokenType::Equal]) {
+            self.expression()?
+        } else {
+            Expr::Literal(Value::Nil)
+        };
 
         if !self.is_at_end() {
             self.consume(TokenType::Semicolon, "Expect ';' after variable declaration.".to_string())?;
@@ -63,6 +64,8 @@ impl Parser {
     fn statement(&mut self) -> Result<Stmt> {
         if self.match_any(&[TokenType::Print]) {
             self.print_statement()
+        } else if self.match_any(&[TokenType::LeftBrace]) {
+            self.block()
         } else {
             self.expression_statement()
         }
@@ -74,6 +77,15 @@ impl Parser {
             self.consume(TokenType::Semicolon, "Expect ';' after value.".to_string())?;
         }
         Ok(Stmt::Print(expr))
+    }
+
+    fn block(&mut self) -> Result<Stmt> {
+        let mut stmts = vec![];
+        while !self.is_at_end() && !self.check(&TokenType::RightBrace) {
+            stmts.push(self.declaration()?);
+        }
+        self.consume(TokenType::RightBrace, "Expect '}' after block.".to_string())?;
+        Ok(Stmt::Block(stmts))
     }
 
     fn expression_statement(&mut self) -> Result<Stmt> {
@@ -145,20 +157,20 @@ impl Parser {
         match ty {
             TokenType::Number(n) => {
                 self.advance();
-                return Ok(Expr::Literal(Value::Number(n)));
+                Ok(Expr::Literal(Value::Number(n)))
             }
             TokenType::String(ref s) => {
                 self.advance();
-                return Ok(Expr::Literal(Value::String(s.clone())));
+                Ok(Expr::Literal(Value::String(s.clone())))
             }
             TokenType::LeftParen => {
                 self.advance();
                 let expr = self.expression()?;
                 self.consume(TokenType::RightParen, "Expect ')' after expression".to_string())?;
-                return Ok(Expr::Grouping(Box::new(Grouping { expr })));
+                Ok(Expr::Grouping(Box::new(Grouping { expr })))
             }
             _ => {
-                return Err(ErrorKind::ParseError(self.peek().clone(), format!("Expect expression")).into());
+                Err(ErrorKind::ParseError(self.peek().clone(), "Expect expression".to_string()).into())
             }
         }
     }
@@ -196,7 +208,7 @@ impl Parser {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn check(&mut self, token_type: &TokenType) -> bool {
