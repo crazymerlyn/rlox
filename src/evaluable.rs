@@ -12,6 +12,7 @@ impl Evaluable for Expr {
             Expr::Literal(ref v) => Ok(v.clone()),
             Expr::Unary(ref u) => u.evaluate(env),
             Expr::Binary(ref b) => b.evaluate(env),
+            Expr::Logical(ref l) => l.evaluate(env),
             Expr::Grouping(ref g) => g.evaluate(env),
             Expr::Variable(ref id) => {
                 match env.get(&id.name.lexeme) {
@@ -35,7 +36,7 @@ impl Evaluable for Expr {
 impl Evaluable for UnaryExpr {
     fn evaluate(&self, env: &mut Environment) -> Result<Value> {
         match self.op {
-            UnaryOperator::Bang => Ok(Value::Bool(!is_truthy(&self.expr.evaluate(env)?))),
+            UnaryOperator::Bang => Ok(Value::Bool(!self.expr.evaluate(env)?.is_truthy())),
             UnaryOperator::Minus => match self.expr.evaluate(env)? {
                 Value::Number(n) => Ok(Value::Number(-n)),
                 x => Err(ErrorKind::EvaluateError(format!("Can't negate {}", x)).into()),
@@ -96,18 +97,22 @@ impl Evaluable for BinaryExpr {
     }
 }
 
+impl Evaluable for LogicalExpr {
+    fn evaluate(&self, env: &mut Environment) -> Result<Value> {
+        let left = self.left.evaluate(env)?;
+        if self.op == LogicalOperator::Or {
+            if left.is_truthy() { return Ok(left); }
+        } else {
+            if !left.is_truthy() { return Ok(left); }
+        }
+        self.right.evaluate(env)
+    }
+}
+
 fn number(value: &Value) -> Result<f64> {
     match *value {
         Value::Number(n) => Ok(n),
         _ => Err(ErrorKind::EvaluateError(format!("Expected a number, instead got: {}", value)).into())
-    }
-}
-
-fn is_truthy(value: &Value) -> bool {
-    match *value {
-        Value::Nil => false,
-        Value::Bool(b) => b,
-        _ => true,
     }
 }
 

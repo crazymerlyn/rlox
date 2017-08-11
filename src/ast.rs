@@ -27,6 +27,31 @@ impl fmt::Display for UnaryOperator {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum LogicalOperator {
+    Or,
+    And,
+}
+
+impl From<TokenType> for LogicalOperator {
+    fn from(token: TokenType) -> LogicalOperator {
+        match token {
+            TokenType::Or => LogicalOperator::Or,
+            TokenType::And => LogicalOperator::And,
+            _ => panic!("Invalid logical operator {:?}", token)
+        }
+    }
+}
+
+impl fmt::Display for LogicalOperator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            LogicalOperator::Or => write!(f, "or"),
+            LogicalOperator::And => write!(f, "and"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum BinaryOperator {
     Equal,
@@ -108,6 +133,19 @@ impl fmt::Display for BinaryExpr {
 }
 
 #[derive(Debug, Clone)]
+pub struct LogicalExpr {
+    pub left: Expr,
+    pub op: LogicalOperator,
+    pub right: Expr,
+}
+
+impl fmt::Display for LogicalExpr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({} {} {})", self.op, self.left, self.right)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Grouping {
     pub expr: Expr,
 }
@@ -137,6 +175,16 @@ impl fmt::Display for Value {
     }
 }
 
+impl Value {
+    pub fn is_truthy(&self) -> bool {
+        match *self {
+            Value::Nil => false,
+            Value::Bool(b) => b,
+            _ => true,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Identifier {
     pub name: Token,
@@ -147,6 +195,7 @@ pub enum Expr {
     Literal(Value),
     Unary(Box<UnaryExpr>),
     Binary(Box<BinaryExpr>),
+    Logical(Box<LogicalExpr>),
     Grouping(Box<Grouping>),
     Variable(Identifier),
     Assign(Identifier, Box<Expr>),
@@ -159,6 +208,7 @@ impl fmt::Display for Expr {
             Expr::Literal(ref v) => write!(f, "{}", v),
             Expr::Unary(ref v) => write!(f, "{}", v),
             Expr::Binary(ref v) => write!(f, "{}", v),
+            Expr::Logical(ref v) => write!(f, "{}", v),
             Expr::Grouping(ref v) => write!(f, "{}", v),
             Expr::Variable(ref v) => write!(f, "{}", v.name.lexeme),
             Expr::Assign(ref id, ref v) => write!(f, "{} = {}", id.name.lexeme, v),
@@ -171,5 +221,6 @@ pub enum Stmt {
     Print(Expr),
     Decl(Identifier, Expr),
     Block(Vec<Stmt>),
+    If(Expr, Box<Stmt>, Option<Box<Stmt>>),
 }
 

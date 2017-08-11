@@ -33,6 +33,18 @@ impl Interpretable for Stmt {
                 env.pop_scope();
                 Ok(Value::Nil)
             }
+            Stmt::If(ref cond, ref if_stmt, ref else_stmt) => {
+                let value = cond.evaluate(env)?;
+                if value.is_truthy() {
+                    if_stmt.interpret(env)
+                } else {
+                    if let Some(ref else_stmt) = *else_stmt {
+                        else_stmt.interpret(env)
+                    } else {
+                        Ok(Value::Nil)
+                    }
+                }
+            }
         }
     }
 }

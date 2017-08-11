@@ -66,6 +66,8 @@ impl Parser {
             self.print_statement()
         } else if self.match_any(&[TokenType::LeftBrace]) {
             self.block()
+        } else if self.match_any(&[TokenType::If]) {
+            self.if_statement()
         } else {
             self.expression_statement()
         }
@@ -88,6 +90,20 @@ impl Parser {
         Ok(Stmt::Block(stmts))
     }
 
+    fn if_statement(&mut self) -> Result<Stmt> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'if'.")?;
+        let cond = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')' after if condition.")?;
+
+        let if_branch = self.statement()?;
+        let else_branch = if self.match_any(&[TokenType::Else]) {
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+        Ok(Stmt::If(cond, Box::new(if_branch), else_branch))
+    }
+
     fn expression_statement(&mut self) -> Result<Stmt> {
         let expr = self.expression()?;
         if !self.is_at_end() {
@@ -101,7 +117,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Expr> {
-        let expr = self.equality()?;
+        let expr = self.or_expr()?;
         if self.match_any(&[TokenType::Equal]) {
             let equals = self.previous().clone();
             let value = self.assignment()?;
@@ -112,6 +128,28 @@ impl Parser {
         } else {
             Ok(expr)
         }
+    }
+
+    fn or_expr(&mut self) -> Result<Expr> {
+        let mut left = self.and_expr()?;
+
+        while self.match_any(&[TokenType::Or]) {
+            let op = self.previous().ty.clone();
+            let right = self.and_expr()?;
+            left = Expr::Logical(Box::new(LogicalExpr { left, op: op.into(), right }));
+        }
+        Ok(left)
+    }
+
+    fn and_expr(&mut self) -> Result<Expr> {
+        let mut left = self.equality()?;
+
+        while self.match_any(&[TokenType::And]) {
+            let op = self.previous().ty.clone();
+            let right = self.equality()?;
+            left = Expr::Logical(Box::new(LogicalExpr { left, op: op.into(), right }));
+        }
+        Ok(left)
     }
 
     fn equality(&mut self) -> Result<Expr> {
@@ -191,13 +229,13 @@ impl Parser {
         }
     }
 
-    fn consume(&mut self, ty: TokenType, error: String) -> Result<Token> {
+    fn consume<S: AsRef<str>>(&mut self, ty: TokenType, error: S) -> Result<Token> {
         if self.check(&ty) {
             let result = self.peek().clone();
             self.advance();
             Ok(result)
         } else {
-            Err(ErrorKind::ParseError(self.peek().clone(), error).into())
+            Err(ErrorKind::ParseError(self.peek().clone(), error.as_ref().to_string()).into())
         }
     }
 
