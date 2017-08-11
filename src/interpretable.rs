@@ -37,12 +37,10 @@ impl Interpretable for Stmt {
                 let value = cond.evaluate(env)?;
                 if value.is_truthy() {
                     if_stmt.interpret(env)
+                } else if let Some(ref else_stmt) = *else_stmt {
+                    else_stmt.interpret(env)
                 } else {
-                    if let Some(ref else_stmt) = *else_stmt {
-                        else_stmt.interpret(env)
-                    } else {
-                        Ok(Value::Nil)
-                    }
+                    Ok(Value::Nil)
                 }
             }
             Stmt::While(ref cond, ref stmt) => {

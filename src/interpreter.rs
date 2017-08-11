@@ -124,12 +124,9 @@ impl Environment {
 
     pub fn update(&mut self, s: String, v: Value) {
         for map in self.maps.iter_mut().rev() {
-            match map.get(&s) {
-                Some(_) => {
-                    map.insert(s.clone(), v.clone());
-                    return;
-                }
-                _ => {}
+            if map.get(&s).is_some() {
+                map.insert(s.clone(), v.clone());
+                return;
             }
         }
         panic!("Trying to update non-existant variable");

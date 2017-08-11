@@ -102,8 +102,8 @@ impl Evaluable for LogicalExpr {
         let left = self.left.evaluate(env)?;
         if self.op == LogicalOperator::Or {
             if left.is_truthy() { return Ok(left); }
-        } else {
-            if !left.is_truthy() { return Ok(left); }
+        } else if !left.is_truthy() {
+            return Ok(left); 
         }
         self.right.evaluate(env)
     }
