@@ -27,11 +27,15 @@ impl Interpretable for Stmt {
             }
             Stmt::Block(ref stmts) => {
                 env.push_local_scope();
+                let mut res = Value::Nil;
                 for stmt in stmts {
-                    stmt.interpret(env)?;
+                    res = stmt.interpret(env)?;
+                    if let Value::Return(_) = res {
+                        return Ok(res);
+                    }
                 }
                 env.pop_scope();
-                Ok(Value::Nil)
+                Ok(res)
             }
             Stmt::If(ref cond, ref if_stmt, ref else_stmt) => {
                 let value = cond.evaluate(env)?;
@@ -44,10 +48,21 @@ impl Interpretable for Stmt {
                 }
             }
             Stmt::While(ref cond, ref stmt) => {
+                let mut res = Value::Nil;
                 while cond.evaluate(env)?.is_truthy() {
-                    stmt.interpret(env)?;
+                    res = stmt.interpret(env)?;
+                    if let Value::Return(_) = res {
+                        return Ok(res);
+                    }
                 }
+                Ok(res)
+            }
+            Stmt::Func(ref name, ref params, ref body) => {
+                env.insert(name.lexeme.clone(), Value::Func(name.clone(), params.clone(), body.clone()));
                 Ok(Value::Nil)
+            }
+            Stmt::Return(ref expr) => {
+                Ok(Value::Return(Box::new(expr.evaluate(env)?)))
             }
         }
     }

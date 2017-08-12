@@ -11,7 +11,9 @@ mod errors;
 mod scanner;
 mod parser;
 mod ast;
+mod builtins;
 mod evaluable;
+mod callable;
 mod interpretable;
 
 fn main() {

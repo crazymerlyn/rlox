@@ -1,6 +1,7 @@
 use ast::*;
 use errors::{Result, ErrorKind};
 use interpreter::Environment;
+use callable::Callable;
 
 pub trait Evaluable {
     fn evaluate(&self, env: &mut Environment) -> Result<Value>;
@@ -28,6 +29,14 @@ impl Evaluable for Expr {
                     env.update(id.name.lexeme.clone(), value.clone());
                     Ok(value)
                 }
+            }
+            Expr::Call(ref expr, ref args) => {
+                let func = expr.evaluate(env)?;
+                let mut values = vec![];
+                for arg in args {
+                    values.push(arg.evaluate(env)?)
+                }
+                func.call(env, values)
             }
         }
     }

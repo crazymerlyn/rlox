@@ -1,8 +1,9 @@
 use scanner::{TokenType, Token};
 use std::convert::From;
 use std::fmt;
+use errors::Result;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
     Bang,
     Minus,
@@ -52,7 +53,7 @@ impl fmt::Display for LogicalOperator {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BinaryOperator {
     Equal,
     EqualEqual,
@@ -107,7 +108,7 @@ impl fmt::Display for BinaryOperator {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UnaryExpr {
     pub op: UnaryOperator,
     pub expr: Expr,
@@ -119,7 +120,7 @@ impl fmt::Display for UnaryExpr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BinaryExpr {
     pub left: Expr,
     pub op: BinaryOperator,
@@ -132,7 +133,7 @@ impl fmt::Display for BinaryExpr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LogicalExpr {
     pub left: Expr,
     pub op: LogicalOperator,
@@ -145,7 +146,7 @@ impl fmt::Display for LogicalExpr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Grouping {
     pub expr: Expr,
 }
@@ -156,12 +157,17 @@ impl fmt::Display for Grouping {
     }
 }
 
+pub type BuitinFunc = fn(Vec<Value>) -> Result<Value>;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Nil,
     Bool(bool),
     Number(f64),
     String(String),
+    BuiltinFunc(String, usize, BuitinFunc),
+    Func(Token, Vec<Token>, Box<Stmt>),
+    Return(Box<Value>),
 }
 
 impl fmt::Display for Value {
@@ -171,6 +177,9 @@ impl fmt::Display for Value {
             Value::Bool(b) => write!(f, "{}", b),
             Value::Number(n) => write!(f, "{}", n),
             Value::String(ref s) => write!(f, "\"{}\"", s),
+            Value::BuiltinFunc(ref name, _, _) => write!(f, "<built-in function {}>", name),
+            Value::Func(ref tok, _, _) => write!(f, "<function {}>", tok.lexeme),
+            Value::Return(ref val) => write!(f, "return {};", val),
         }
     }
 }
@@ -185,17 +194,18 @@ impl Value {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Identifier {
     pub name: Token,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Literal(Value),
     Unary(Box<UnaryExpr>),
     Binary(Box<BinaryExpr>),
     Logical(Box<LogicalExpr>),
+    Call(Box<Expr>, Vec<Expr>),
     Grouping(Box<Grouping>),
     Variable(Identifier),
     Assign(Identifier, Box<Expr>),
@@ -209,6 +219,9 @@ impl fmt::Display for Expr {
             Expr::Unary(ref v) => write!(f, "{}", v),
             Expr::Binary(ref v) => write!(f, "{}", v),
             Expr::Logical(ref v) => write!(f, "{}", v),
+            Expr::Call(ref callee, ref args) => {
+                write!(f, "{}({})", callee, args.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))
+            }
             Expr::Grouping(ref v) => write!(f, "{}", v),
             Expr::Variable(ref v) => write!(f, "{}", v.name.lexeme),
             Expr::Assign(ref id, ref v) => write!(f, "{} = {}", id.name.lexeme, v),
@@ -216,12 +229,15 @@ impl fmt::Display for Expr {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     Expr(Expr),
     Print(Expr),
     Decl(Identifier, Expr),
     Block(Vec<Stmt>),
+    Return(Expr),
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
     While(Expr, Box<Stmt>),
+    Func(Token, Vec<Token>, Box<Stmt>),
 }
 

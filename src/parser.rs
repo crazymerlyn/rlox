@@ -35,6 +35,8 @@ impl Parser {
     fn declaration(&mut self) -> Result<Stmt> {
         let res = if self.match_any(&[TokenType::Var]) {
             self.var_declaration()
+        } else if self.match_any(&[TokenType::Fun]) {
+            self.fun_declaration()
         } else {
             self.statement()
         };
@@ -61,6 +63,23 @@ impl Parser {
         Ok(Stmt::Decl(Identifier { name }, initializer))
     }
 
+    fn fun_declaration(&mut self) -> Result<Stmt> {
+        let name = self.consume(TokenType::Identifier, "Expect function name.")?;
+        self.consume(TokenType::LeftParen, "Expect '(' after function name.")?;
+        let mut params = vec![];
+        if !self.check(&TokenType::RightParen) {
+            params.push(self.consume(TokenType::Identifier, "Expect identifier name.")?);
+            while self.match_any(&[TokenType::Comma]) {
+                params.push(self.consume(TokenType::Identifier, "Expect identifier name.")?);
+            }
+        }
+        self.consume(TokenType::RightParen, "Expect ')' after parameters")?;
+
+        self.consume(TokenType::LeftBrace, "Expect '{' before function body")?;
+        let block = self.block()?;
+        Ok(Stmt::Func(name, params, Box::new(block)))
+    }
+
     fn statement(&mut self) -> Result<Stmt> {
         if self.match_any(&[TokenType::Print]) {
             self.print_statement()
@@ -68,6 +87,8 @@ impl Parser {
             self.block()
         } else if self.match_any(&[TokenType::While]) {
             self.while_stmt()
+        } else if self.match_any(&[TokenType::Return]) {
+            self.return_stmt()
         } else if self.match_any(&[TokenType::For]) {
             self.for_stmt()
         } else if self.match_any(&[TokenType::If]) {
@@ -100,6 +121,17 @@ impl Parser {
         self.consume(TokenType::RightParen, "Expect ')' after while condition.")?;
         let stmt = self.statement()?;
         Ok(Stmt::While(cond, Box::new(stmt)))
+    }
+
+    fn return_stmt(&mut self) -> Result<Stmt> {
+        let expr = if self.check(&TokenType::Semicolon) {
+            Expr::Literal(Value::Nil)
+        } else {
+            self.expression()?
+        };
+
+        self.consume(TokenType::Semicolon, "Exprect ';' after return statement.")?;
+        Ok(Stmt::Return(expr))
     }
 
     fn for_stmt(&mut self) -> Result<Stmt> {
@@ -224,7 +256,34 @@ impl Parser {
             return Ok(Expr::Unary(Box::new(UnaryExpr { op: From::from(op), expr })));
         }
 
-        self.primary()
+        self.call()
+    }
+
+    fn call(&mut self) -> Result<Expr> {
+        let mut expr = self.primary()?;
+
+        loop {
+            if self.match_any(&[TokenType::LeftParen]) {
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, expr: Expr) -> Result<Expr> {
+        let mut args = vec![];
+        if !self.check(&TokenType::RightParen) {
+            args.push(self.expression()?);
+            while self.match_any(&[TokenType::Comma]) {
+                args.push(self.expression()?);
+            }
+        }
+        self.consume(TokenType::RightParen, "Expect ')' after arguments")?;
+
+        Ok(Expr::Call(Box::new(expr), args))
     }
 
     fn primary(&mut self) -> Result<Expr> {

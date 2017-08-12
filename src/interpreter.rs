@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::fs::File;
+use std::fmt;
 
 use std::io::Result;
 use std::io::{self, Write, Read, BufRead};
@@ -11,18 +12,22 @@ use std::collections::HashMap;
 use scanner::Scanner;
 use parser::Parser;
 use interpretable::Interpretable;
-use ast::Value;
+use ast::*;
+use builtins::*;
 
 pub struct Interpreter {
     had_error: bool,
     env: Environment,
 }
 
+
 impl Interpreter {
     pub fn new() -> Interpreter {
+        let mut env = Environment::new();
+        env.insert("clock".to_string(), Value::BuiltinFunc("clock".to_string(), 0, clock));
         Interpreter {
             had_error: false,
-            env: Environment::new(),
+            env: env,
         }
     }
 
@@ -85,6 +90,7 @@ impl Interpreter {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Environment {
     maps: Vec<HashMap<String, Value>>,
 }
@@ -117,6 +123,17 @@ impl Environment {
         None
     }
 
+    pub fn export_non_globals(&mut self) -> Vec<HashMap<String, Value>> {
+        let non_globals = self.maps.iter().skip(1).cloned().collect::<Vec<_>>();
+        self.maps.truncate(1);
+        non_globals
+    }
+
+    pub fn import_non_globals(&mut self, maps: Vec<HashMap<String, Value>>) {
+        self.maps.truncate(1);
+        self.maps.extend(maps);
+    }
+
     pub fn insert(&mut self, s: String, v: Value) {
         let n = self.maps.len();
         self.maps[n-1].insert(s, v);
@@ -130,6 +147,18 @@ impl Environment {
             }
         }
         panic!("Trying to update non-existant variable");
+    }
+}
+
+impl fmt::Display for Environment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, map) in self.maps.iter().enumerate() {
+            write!(f, "Level: {}\n", i)?;
+            for (name, val) in map.iter() {
+                write!(f, "{} -> {}\n", name, val)?;
+            }
+        }
+        Ok(())
     }
 }
 
