@@ -23,10 +23,7 @@ pub struct Interpreter {
 impl Interpreter {
     pub fn new() -> Interpreter {
         let mut env = Environment::new();
-        env.insert(
-            "clock".to_string(),
-            Value::BuiltinFunc("clock".to_string(), 0, clock),
-        );
+        env.insert("clock", Value::BuiltinFunc("clock".to_string(), 0, clock));
         Interpreter {
             had_error: false,
             env,
@@ -38,7 +35,7 @@ impl Interpreter {
         print!("> ");
         io::stdout().flush()?;
         for line in stdin.lock().lines() {
-            self.run(line.unwrap(), true);
+            self.run(&line.unwrap(), true);
             self.had_error = false;
             print!("> ");
             io::stdout().flush()?;
@@ -51,14 +48,14 @@ impl Interpreter {
         let mut s = String::new();
         let mut file = File::open(path)?;
         file.read_to_string(&mut s)?;
-        self.run(s, false);
+        self.run(&s, false);
         if self.had_error {
             process::exit(65);
         };
         Ok(())
     }
 
-    fn run<S: AsRef<str>>(&mut self, code: S, print_value: bool) {
+    fn run(&mut self, code: &str, print_value: bool) {
         let scanner = Scanner::new(code);
         let stmts = match scanner
             .scan_tokens()
@@ -130,9 +127,7 @@ impl Environment {
     }
 
     pub fn export_non_globals(&mut self) -> Vec<HashMap<String, Value>> {
-        let non_globals = self.maps.iter().skip(1).cloned().collect::<Vec<_>>();
-        self.maps.truncate(1);
-        non_globals
+        self.maps.split_off(1)
     }
 
     pub fn import_non_globals(&mut self, maps: Vec<HashMap<String, Value>>) {
@@ -140,19 +135,20 @@ impl Environment {
         self.maps.extend(maps);
     }
 
-    pub fn insert(&mut self, s: String, v: Value) {
+    pub fn insert(&mut self, s: &str, v: Value) {
         let n = self.maps.len();
-        self.maps[n - 1].insert(s, v);
+        self.maps[n - 1].insert(s.to_owned(), v);
     }
 
-    pub fn update(&mut self, s: String, v: Value) {
-        for map in self.maps.iter_mut().rev() {
-            if map.get(&s).is_some() {
-                map.insert(s.clone(), v.clone());
-                return;
-            }
-        }
-        panic!("Trying to update non-existant variable");
+    pub fn update(&mut self, s: &str, v: Value) -> Option<Value> {
+        self.maps
+            .iter_mut()
+            .rev()
+            .find_map(|map| map.get_mut(s))
+            .map(|val| {
+                *val = v.clone();
+                v
+            })
     }
 }
 

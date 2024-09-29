@@ -15,25 +15,15 @@ impl Evaluable for Expr {
             Expr::Binary(ref b) => b.evaluate(env),
             Expr::Logical(ref l) => l.evaluate(env),
             Expr::Grouping(ref g) => g.evaluate(env),
-            Expr::Variable(ref id) => match env.get(&id.name.lexeme) {
-                Some(v) => Ok(v.clone()),
-                None => Err(ErrorKind::EvaluateError(format!(
-                    "Undefined variable: {}",
-                    id.name.lexeme
-                ))
-                .into()),
-            },
+            Expr::Variable(ref id) => env.get(&id.name.lexeme).cloned().ok_or(
+                ErrorKind::EvaluateError(format!("Undefined variable: {}", id.name.lexeme)).into(),
+            ),
             Expr::Assign(ref id, ref e) => {
-                if env.get(&id.name.lexeme).is_none() {
-                    Err(
-                        ErrorKind::EvaluateError(format!("Undefined variable: {}", id.name.lexeme))
-                            .into(),
-                    )
-                } else {
-                    let value = e.evaluate(env)?;
-                    env.update(id.name.lexeme.clone(), value.clone());
-                    Ok(value)
-                }
+                let value = e.evaluate(env)?;
+                env.update(&id.name.lexeme, value).ok_or(
+                    ErrorKind::EvaluateError(format!("Undefined variable: {}", id.name.lexeme))
+                        .into(),
+                )
             }
             Expr::Call(ref expr, ref args) => {
                 let func = expr.evaluate(env)?;

@@ -20,7 +20,7 @@ impl Interpretable for Stmt {
             }
             Stmt::Decl(ref id, ref expr) => {
                 let value = expr.evaluate(env)?;
-                env.insert(id.name.lexeme.clone(), value);
+                env.insert(&id.name.lexeme, value);
                 Ok(Value::Nil)
             }
             Stmt::Block(ref stmts) => {
@@ -57,8 +57,8 @@ impl Interpretable for Stmt {
             }
             Stmt::Func(ref name, ref params, ref body) => {
                 env.insert(
-                    name.lexeme.clone(),
-                    Value::Func(name.clone(), params.clone(), body.clone()),
+                    &name.lexeme,
+                    Value::Func(name.to_owned(), params.to_owned(), body.to_owned()),
                 );
                 Ok(Value::Nil)
             }

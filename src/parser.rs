@@ -6,7 +6,7 @@ macro_rules! binary_left {
     ($self:ident, $subexpr:ident, $($op:expr),*) => {{
         let mut left = $self.$subexpr()?;
         while $self.match_any(&[$($op,)*]) {
-            let op = $self.previous().ty.clone();
+            let op = $self.previous().ty;
             let right = $self.$subexpr()?;
             left = Expr::Binary(Box::new(BinaryExpr{left, op: From::from(op), right}));
         }
@@ -222,7 +222,7 @@ impl Parser {
         let mut left = self.and_expr()?;
 
         while self.match_any(&[TokenType::Or]) {
-            let op = self.previous().ty.clone();
+            let op = self.previous().ty;
             let right = self.and_expr()?;
             left = Expr::Logical(Box::new(LogicalExpr {
                 left,
@@ -237,7 +237,7 @@ impl Parser {
         let mut left = self.equality()?;
 
         while self.match_any(&[TokenType::And]) {
-            let op = self.previous().ty.clone();
+            let op = self.previous().ty;
             let right = self.equality()?;
             left = Expr::Logical(Box::new(LogicalExpr {
                 left,
@@ -278,7 +278,7 @@ impl Parser {
 
     fn unary(&mut self) -> Result<Expr> {
         if self.match_any(&[TokenType::Minus, TokenType::Bang]) {
-            let op = self.previous().ty.clone();
+            let op = self.previous().ty;
             let expr = self.unary()?;
             return Ok(Expr::Unary(Box::new(UnaryExpr {
                 op: From::from(op),
@@ -331,15 +331,17 @@ impl Parser {
                 name: self.previous().clone(),
             }));
         }
-        let ty = self.peek().ty.clone();
-        match ty {
+        let token = self.peek();
+        match token.ty {
             TokenType::Number(n) => {
                 self.advance();
                 Ok(Expr::Literal(Value::Number(n)))
             }
-            TokenType::String(ref s) => {
+            TokenType::String => {
+                // Ignore double quotes at start and end
+                let s = token.lexeme[1..token.lexeme.len() - 1].to_string();
                 self.advance();
-                Ok(Expr::Literal(Value::String(s.clone())))
+                Ok(Expr::Literal(Value::String(s)))
             }
             TokenType::LeftParen => {
                 self.advance();
@@ -375,13 +377,13 @@ impl Parser {
         }
     }
 
-    fn consume<S: AsRef<str>>(&mut self, ty: TokenType, error: S) -> Result<Token> {
+    fn consume(&mut self, ty: TokenType, error: &str) -> Result<Token> {
         if self.check(&ty) {
             let result = self.peek().clone();
             self.advance();
             Ok(result)
         } else {
-            Err(ErrorKind::ParseError(self.peek().clone(), error.as_ref().to_string()).into())
+            Err(ErrorKind::ParseError(self.peek().clone(), error.to_string()).into())
         }
     }
 
@@ -396,11 +398,7 @@ impl Parser {
     }
 
     fn check(&mut self, token_type: &TokenType) -> bool {
-        if self.is_at_end() {
-            false
-        } else {
-            &self.peek().ty == token_type
-        }
+        &self.peek().ty == token_type
     }
 
     fn advance(&mut self) {

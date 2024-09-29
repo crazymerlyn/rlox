@@ -25,7 +25,7 @@ lazy_static! {
     };
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     // Single character tokens
     LeftParen,
@@ -52,7 +52,7 @@ pub enum TokenType {
 
     // Literals
     Identifier,
-    String(String),
+    String,
     Number(f64),
 
     // Keywords
@@ -191,12 +191,10 @@ impl Scanner {
     }
 
     fn string(&mut self) -> Result<()> {
-        let mut string = "".to_string();
         while self.peek() != Some('"') && !self.is_at_end() {
             if self.peek() == Some('\n') {
                 self.line += 1;
             }
-            string.push(self.advance());
         }
 
         if self.is_at_end() {
@@ -205,7 +203,7 @@ impl Scanner {
 
         self.advance(); // Closing "
 
-        self.add_token(TokenType::String(string));
+        self.add_token(TokenType::String);
         Ok(())
     }
 
@@ -219,7 +217,7 @@ impl Scanner {
                 self.advance();
             }
         }
-        let s = self.src[self.start..self.current].to_string();
+        let s = &self.src[self.start..self.current];
         self.add_token(TokenType::Number(s.parse().unwrap()));
         Ok(())
     }
@@ -229,13 +227,8 @@ impl Scanner {
             self.advance();
         }
 
-        let text = self.src[self.start..self.current].to_string();
-        self.add_token(
-            KEYWORDS
-                .get(&text)
-                .cloned()
-                .unwrap_or(TokenType::Identifier),
-        );
+        let text = &self.src[self.start..self.current];
+        self.add_token(*KEYWORDS.get(text).unwrap_or(&TokenType::Identifier));
     }
 
     fn error(&self, s: String) -> Result<()> {

@@ -33,8 +33,8 @@ impl Callable for Value {
                 } else {
                     let non_globals = env.export_non_globals();
                     env.push_local_scope();
-                    for (param, value) in params.iter().zip(args.iter()) {
-                        env.insert(param.lexeme.clone(), value.clone());
+                    for (param, value) in params.iter().zip(args.into_iter()) {
+                        env.insert(&param.lexeme, value);
                     }
                     let res = block.interpret(env);
                     env.import_non_globals(non_globals);
