@@ -1,7 +1,7 @@
-use scanner::{TokenType, Token};
+use crate::errors::Result;
+use crate::scanner::{Token, TokenType};
 use std::convert::From;
 use std::fmt;
-use errors::Result;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
@@ -14,7 +14,7 @@ impl From<TokenType> for UnaryOperator {
         match token {
             TokenType::Bang => UnaryOperator::Bang,
             TokenType::Minus => UnaryOperator::Minus,
-            _ => panic!("Invalid unary operator {:?}", token)
+            _ => panic!("Invalid unary operator {:?}", token),
         }
     }
 }
@@ -39,7 +39,7 @@ impl From<TokenType> for LogicalOperator {
         match token {
             TokenType::Or => LogicalOperator::Or,
             TokenType::And => LogicalOperator::And,
-            _ => panic!("Invalid logical operator {:?}", token)
+            _ => panic!("Invalid logical operator {:?}", token),
         }
     }
 }
@@ -84,7 +84,7 @@ impl From<TokenType> for BinaryOperator {
             TokenType::Plus => BinaryOperator::Plus,
             TokenType::Slash => BinaryOperator::Slash,
             TokenType::Star => BinaryOperator::Star,
-            _ => panic!("Invalid binary operator {:?}", token)
+            _ => panic!("Invalid binary operator {:?}", token),
         }
     }
 }
@@ -211,7 +211,6 @@ pub enum Expr {
     Assign(Identifier, Box<Expr>),
 }
 
-
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -220,7 +219,15 @@ impl fmt::Display for Expr {
             Expr::Binary(ref v) => write!(f, "{}", v),
             Expr::Logical(ref v) => write!(f, "{}", v),
             Expr::Call(ref callee, ref args) => {
-                write!(f, "{}({})", callee, args.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))
+                write!(
+                    f,
+                    "{}({})",
+                    callee,
+                    args.iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
             }
             Expr::Grouping(ref v) => write!(f, "{}", v),
             Expr::Variable(ref v) => write!(f, "{}", v.name.lexeme),
@@ -240,4 +247,3 @@ pub enum Stmt {
     While(Expr, Box<Stmt>),
     Func(Token, Vec<Token>, Box<Stmt>),
 }
-

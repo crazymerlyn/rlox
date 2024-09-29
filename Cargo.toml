@@ -2,7 +2,8 @@
 authors = ["CrazyMerlyn <crazy.d.merlyn@gmail.com>"]
 name = "rlox"
 version = "0.1.0"
+edition = "2021"
 
 [dependencies]
-error-chain = "0.11.0-rc.2"
-lazy_static = "0.2.8"
+error-chain = { version = "0.12.4", default-features = false }
+lazy_static = "1.5.0"

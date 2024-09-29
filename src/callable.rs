@@ -1,7 +1,7 @@
-use ast::*;
-use interpreter::Environment;
-use errors::{Result, ErrorKind};
-use interpretable::Interpretable;
+use crate::ast::*;
+use crate::errors::{ErrorKind, Result};
+use crate::interpretable::Interpretable;
+use crate::interpreter::Environment;
 
 pub trait Callable {
     fn call(&self, env: &mut Environment, args: Vec<Value>) -> Result<Value>;
@@ -16,7 +16,8 @@ impl Callable for Value {
                         "Wrong number of arguments: Expected {}, got {}",
                         arity,
                         args.len()
-                    )).into())
+                    ))
+                    .into())
                 } else {
                     func(args)
                 }
@@ -27,7 +28,8 @@ impl Callable for Value {
                         "Wrong number of arguments: Expected {}, got {}",
                         params.len(),
                         args.len()
-                    )).into())
+                    ))
+                    .into())
                 } else {
                     let non_globals = env.export_non_globals();
                     env.push_local_scope();
@@ -36,17 +38,14 @@ impl Callable for Value {
                     }
                     let res = block.interpret(env);
                     env.import_non_globals(non_globals);
-                    
+
                     match res {
                         Ok(Value::Return(x)) => Ok(*x),
                         _ => res,
                     }
                 }
             }
-            _ => {
-                Err(ErrorKind::EvaluateError(format!("{} is not a valid function", self)).into())
-            }
+            _ => Err(ErrorKind::EvaluateError(format!("{} is not a valid function", self)).into()),
         }
     }
 }
-

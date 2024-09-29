@@ -1,6 +1,6 @@
 #![allow(unknown_lints)]
 
-use scanner::Token;
+use crate::scanner::Token;
 
 error_chain! {
     errors {

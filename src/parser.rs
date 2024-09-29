@@ -1,6 +1,6 @@
-use scanner::{Token, TokenType};
-use errors::{Result, ErrorKind};
-use ast::*;
+use crate::ast::*;
+use crate::errors::{ErrorKind, Result};
+use crate::scanner::{Token, TokenType};
 
 macro_rules! binary_left {
     ($self:ident, $subexpr:ident, $($op:expr),*) => {{
@@ -50,7 +50,7 @@ impl Parser {
     }
 
     fn var_declaration(&mut self) -> Result<Stmt> {
-        let name = self.consume(TokenType::Identifier, "Expect variable name.".to_string())?;
+        let name = self.consume(TokenType::Identifier, "Expect variable name.")?;
         let initializer = if self.match_any(&[TokenType::Equal]) {
             self.expression()?
         } else {
@@ -58,7 +58,10 @@ impl Parser {
         };
 
         if !self.is_at_end() {
-            self.consume(TokenType::Semicolon, "Expect ';' after variable declaration.".to_string())?;
+            self.consume(
+                TokenType::Semicolon,
+                "Expect ';' after variable declaration.",
+            )?;
         }
         Ok(Stmt::Decl(Identifier { name }, initializer))
     }
@@ -101,7 +104,7 @@ impl Parser {
     fn print_statement(&mut self) -> Result<Stmt> {
         let expr = self.expression()?;
         if !self.is_at_end() {
-            self.consume(TokenType::Semicolon, "Expect ';' after value.".to_string())?;
+            self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
         }
         Ok(Stmt::Print(expr))
     }
@@ -111,7 +114,7 @@ impl Parser {
         while !self.is_at_end() && !self.check(&TokenType::RightBrace) {
             stmts.push(self.declaration()?);
         }
-        self.consume(TokenType::RightBrace, "Expect '}' after block.".to_string())?;
+        self.consume(TokenType::RightBrace, "Expect '}' after block.")?;
         Ok(Stmt::Block(stmts))
     }
 
@@ -136,7 +139,7 @@ impl Parser {
 
     fn for_stmt(&mut self) -> Result<Stmt> {
         self.consume(TokenType::LeftParen, "Expect '(' after 'for'.")?;
-        let initializer = if self.match_any(&[TokenType::Semicolon]) { 
+        let initializer = if self.match_any(&[TokenType::Semicolon]) {
             None
         } else if self.match_any(&[TokenType::Var]) {
             Some(self.var_declaration()?)
@@ -188,7 +191,7 @@ impl Parser {
     fn expression_statement(&mut self) -> Result<Stmt> {
         let expr = self.expression()?;
         if !self.is_at_end() {
-            self.consume(TokenType::Semicolon, "Expect ';' after value.".to_string())?;
+            self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
         }
         Ok(Stmt::Expr(expr))
     }
@@ -204,7 +207,11 @@ impl Parser {
             let value = self.assignment()?;
             match expr {
                 Expr::Variable(id) => Ok(Expr::Assign(id, Box::new(value))),
-                x => Err(ErrorKind::ParseError(equals, format!("Invalid assignment target: {}", x)).into())
+                x => Err(ErrorKind::ParseError(
+                    equals,
+                    format!("Invalid assignment target: {}", x),
+                )
+                .into()),
             }
         } else {
             Ok(expr)
@@ -217,7 +224,11 @@ impl Parser {
         while self.match_any(&[TokenType::Or]) {
             let op = self.previous().ty.clone();
             let right = self.and_expr()?;
-            left = Expr::Logical(Box::new(LogicalExpr { left, op: op.into(), right }));
+            left = Expr::Logical(Box::new(LogicalExpr {
+                left,
+                op: op.into(),
+                right,
+            }));
         }
         Ok(left)
     }
@@ -228,17 +239,33 @@ impl Parser {
         while self.match_any(&[TokenType::And]) {
             let op = self.previous().ty.clone();
             let right = self.equality()?;
-            left = Expr::Logical(Box::new(LogicalExpr { left, op: op.into(), right }));
+            left = Expr::Logical(Box::new(LogicalExpr {
+                left,
+                op: op.into(),
+                right,
+            }));
         }
         Ok(left)
     }
 
     fn equality(&mut self) -> Result<Expr> {
-        binary_left!(self, comparison, TokenType::BangEqual, TokenType::EqualEqual)
+        binary_left!(
+            self,
+            comparison,
+            TokenType::BangEqual,
+            TokenType::EqualEqual
+        )
     }
 
     fn comparison(&mut self) -> Result<Expr> {
-        binary_left!(self, addition, TokenType::Greater, TokenType::GreaterEqual, TokenType::Less, TokenType::LessEqual)
+        binary_left!(
+            self,
+            addition,
+            TokenType::Greater,
+            TokenType::GreaterEqual,
+            TokenType::Less,
+            TokenType::LessEqual
+        )
     }
 
     fn addition(&mut self) -> Result<Expr> {
@@ -253,7 +280,10 @@ impl Parser {
         if self.match_any(&[TokenType::Minus, TokenType::Bang]) {
             let op = self.previous().ty.clone();
             let expr = self.unary()?;
-            return Ok(Expr::Unary(Box::new(UnaryExpr { op: From::from(op), expr })));
+            return Ok(Expr::Unary(Box::new(UnaryExpr {
+                op: From::from(op),
+                expr,
+            })));
         }
 
         self.call()
@@ -297,7 +327,9 @@ impl Parser {
             return Ok(Expr::Literal(Value::Bool(true)));
         }
         if self.match_any(&[TokenType::Identifier]) {
-            return Ok(Expr::Variable(Identifier { name: self.previous().clone() }));
+            return Ok(Expr::Variable(Identifier {
+                name: self.previous().clone(),
+            }));
         }
         let ty = self.peek().ty.clone();
         match ty {
@@ -312,12 +344,12 @@ impl Parser {
             TokenType::LeftParen => {
                 self.advance();
                 let expr = self.expression()?;
-                self.consume(TokenType::RightParen, "Expect ')' after expression".to_string())?;
+                self.consume(TokenType::RightParen, "Expect ')' after expression")?;
                 Ok(Expr::Grouping(Box::new(Grouping { expr })))
             }
-            _ => {
-                Err(ErrorKind::ParseError(self.peek().clone(), "Expect expression".to_string()).into())
-            }
+            _ => Err(
+                ErrorKind::ParseError(self.peek().clone(), "Expect expression".to_string()).into(),
+            ),
         }
     }
 
@@ -328,8 +360,14 @@ impl Parser {
                 return;
             }
             match self.peek().ty {
-                TokenType::Class | TokenType::Fun | TokenType::Var | TokenType::Print |
-                TokenType::For | TokenType::If | TokenType::While | TokenType::Return => {
+                TokenType::Class
+                | TokenType::Fun
+                | TokenType::Var
+                | TokenType::Print
+                | TokenType::For
+                | TokenType::If
+                | TokenType::While
+                | TokenType::Return => {
                     return;
                 }
                 _ => {}

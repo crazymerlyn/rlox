@@ -1,33 +1,35 @@
-use std::path::Path;
-use std::fs::File;
 use std::fmt;
+use std::fs::File;
+use std::path::Path;
 
 use std::io::Result;
-use std::io::{self, Write, Read, BufRead};
+use std::io::{self, BufRead, Read, Write};
 
 use std::process;
 
 use std::collections::HashMap;
 
-use scanner::Scanner;
-use parser::Parser;
-use interpretable::Interpretable;
-use ast::*;
-use builtins::*;
+use crate::ast::*;
+use crate::builtins::*;
+use crate::interpretable::Interpretable;
+use crate::parser::Parser;
+use crate::scanner::Scanner;
 
 pub struct Interpreter {
     had_error: bool,
     env: Environment,
 }
 
-
 impl Interpreter {
     pub fn new() -> Interpreter {
         let mut env = Environment::new();
-        env.insert("clock".to_string(), Value::BuiltinFunc("clock".to_string(), 0, clock));
+        env.insert(
+            "clock".to_string(),
+            Value::BuiltinFunc("clock".to_string(), 0, clock),
+        );
         Interpreter {
             had_error: false,
-            env: env,
+            env,
         }
     }
 
@@ -50,14 +52,18 @@ impl Interpreter {
         let mut file = File::open(path)?;
         file.read_to_string(&mut s)?;
         self.run(s, false);
-        if self.had_error { process::exit(65); };
+        if self.had_error {
+            process::exit(65);
+        };
         Ok(())
     }
 
     fn run<S: AsRef<str>>(&mut self, code: S, print_value: bool) {
         let scanner = Scanner::new(code);
-        let stmts = match scanner.scan_tokens()
-            .and_then(|tokens| Parser::new(tokens).parse()) {
+        let stmts = match scanner
+            .scan_tokens()
+            .and_then(|tokens| Parser::new(tokens).parse())
+        {
             Ok(x) => x,
             Err(e) => {
                 self.error(e.to_string());
@@ -67,7 +73,7 @@ impl Interpreter {
 
         for stmt in stmts {
             if self.had_error {
-                break
+                break;
             }
             match stmt.interpret(&mut self.env) {
                 Ok(v) => {
@@ -85,7 +91,7 @@ impl Interpreter {
     }
 
     fn report<S: AsRef<str>>(&mut self, context: S, message: S) {
-        writeln!(io::stderr(), "{}{}", context.as_ref(), message.as_ref()).unwrap();
+        eprintln!("{}{}", context.as_ref(), message.as_ref());
         self.had_error = true;
     }
 }
@@ -117,7 +123,7 @@ impl Environment {
     pub fn get(&self, s: &str) -> Option<&Value> {
         for map in self.maps.iter().rev() {
             if let Some(v) = map.get(s) {
-                return Some(v)
+                return Some(v);
             }
         }
         None
@@ -136,7 +142,7 @@ impl Environment {
 
     pub fn insert(&mut self, s: String, v: Value) {
         let n = self.maps.len();
-        self.maps[n-1].insert(s, v);
+        self.maps[n - 1].insert(s, v);
     }
 
     pub fn update(&mut self, s: String, v: Value) {
@@ -153,12 +159,11 @@ impl Environment {
 impl fmt::Display for Environment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, map) in self.maps.iter().enumerate() {
-            write!(f, "Level: {}\n", i)?;
+            writeln!(f, "Level: {}", i)?;
             for (name, val) in map.iter() {
-                write!(f, "{} -> {}\n", name, val)?;
+                writeln!(f, "{} -> {}", name, val)?;
             }
         }
         Ok(())
     }
 }
-

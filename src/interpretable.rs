@@ -1,18 +1,16 @@
-use evaluable::Evaluable;
-use ast::*;
-use errors::Result;
-use interpreter::Environment;
+use crate::ast::*;
+use crate::errors::Result;
+use crate::evaluable::Evaluable;
+use crate::interpreter::Environment;
 
 pub trait Interpretable {
-    fn interpret(&self, &mut Environment) -> Result<Value>;
+    fn interpret(&self, env: &mut Environment) -> Result<Value>;
 }
 
 impl Interpretable for Stmt {
     fn interpret(&self, env: &mut Environment) -> Result<Value> {
         match *self {
-            Stmt::Expr(ref expr) => {
-                expr.evaluate(env)
-            }
+            Stmt::Expr(ref expr) => expr.evaluate(env),
             Stmt::Print(ref expr) => {
                 match expr.evaluate(env)? {
                     Value::String(s) => println!("{}", s), // Print strings without double quotes
@@ -58,13 +56,13 @@ impl Interpretable for Stmt {
                 Ok(res)
             }
             Stmt::Func(ref name, ref params, ref body) => {
-                env.insert(name.lexeme.clone(), Value::Func(name.clone(), params.clone(), body.clone()));
+                env.insert(
+                    name.lexeme.clone(),
+                    Value::Func(name.clone(), params.clone(), body.clone()),
+                );
                 Ok(Value::Nil)
             }
-            Stmt::Return(ref expr) => {
-                Ok(Value::Return(Box::new(expr.evaluate(env)?)))
-            }
+            Stmt::Return(ref expr) => Ok(Value::Return(Box::new(expr.evaluate(env)?))),
         }
     }
 }
-
