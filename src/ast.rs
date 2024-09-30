@@ -219,15 +219,16 @@ impl fmt::Display for Expr {
             Expr::Binary(ref v) => write!(f, "{}", v),
             Expr::Logical(ref v) => write!(f, "{}", v),
             Expr::Call(ref callee, ref args) => {
-                write!(
-                    f,
-                    "{}({})",
-                    callee,
-                    args.iter()
-                        .map(ToString::to_string)
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
+                write!(f, "{callee}(")?;
+                let mut loop_start = true;
+                for arg in args {
+                    if loop_start {
+                        write!(f, "{arg}")?;
+                        loop_start = false;
+                    }
+                    write!(f, ", {arg}")?;
+                }
+                write!(f, ")")
             }
             Expr::Grouping(ref v) => write!(f, "{}", v),
             Expr::Variable(ref v) => write!(f, "{}", v.name.lexeme),
