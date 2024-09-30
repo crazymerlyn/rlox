@@ -195,6 +195,7 @@ impl Scanner {
             if self.peek() == Some('\n') {
                 self.line += 1;
             }
+            self.advance();
         }
 
         if self.is_at_end() {

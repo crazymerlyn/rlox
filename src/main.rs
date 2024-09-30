@@ -1,6 +1,5 @@
-#[macro_use] extern crate error_chain;
-#[macro_use] extern crate lazy_static;
-
+#[macro_use]
+extern crate lazy_static;
 use std::env;
 
 mod interpreter;
@@ -8,13 +7,16 @@ use interpreter::Interpreter;
 
 mod errors;
 
-mod scanner;
-mod parser;
+#[cfg(test)]
+mod tests;
+
 mod ast;
 mod builtins;
-mod evaluable;
 mod callable;
+mod evaluable;
 mod interpretable;
+mod parser;
+mod scanner;
 
 fn main() {
     if env::args().len() > 2 {

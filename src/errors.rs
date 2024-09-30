@@ -1,23 +1,16 @@
-#![allow(unknown_lints)]
-
 use crate::scanner::Token;
+use thiserror::Error;
 
-error_chain! {
-    errors {
-        ScanError(line: usize, t: String) {
-            description("Invalid syntax")
-            display("Error at line {}: {}", line, t)
-        }
-        ParseError(tok: Token, t: String) {
-            description("Invalid program")
-            display("Error at line {} at '{}': {}", tok.line, tok.lexeme, t)
-        }
-        EvaluateError(t: String) {
-            description("Invalid expression")
-            display("Error: {}", t)
-        }
-    }
-    foreign_links {
-        IO(::std::io::Error);
-    }
+#[derive(Error, Debug)]
+pub enum ErrorKind {
+    #[error("Error at line {0}: {1}")]
+    ScanError(usize, String),
+    #[error("Error at line {} at '{}': {t}", tok.line, tok.lexeme)]
+    ParseError { tok: Token, t: String },
+    #[error("Error: {0}")]
+    EvaluateError(String),
+    #[error("IO Error: {0}")]
+    IO(#[from] ::std::io::Error),
 }
+
+pub type Result<T> = std::result::Result<T, ErrorKind>;

@@ -16,8 +16,7 @@ impl Callable for Value {
                         "Wrong number of arguments: Expected {}, got {}",
                         arity,
                         args.len()
-                    ))
-                    .into())
+                    )))
                 } else {
                     func(args)
                 }

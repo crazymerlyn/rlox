@@ -2,10 +2,9 @@ use std::fmt;
 use std::fs::File;
 use std::path::Path;
 
-use std::io::Result;
 use std::io::{self, BufRead, Read, Write};
 
-use std::process;
+use anyhow::Result;
 
 use std::collections::HashMap;
 
@@ -16,7 +15,6 @@ use crate::parser::Parser;
 use crate::scanner::Scanner;
 
 pub struct Interpreter {
-    had_error: bool,
     env: Environment,
 }
 
@@ -24,19 +22,18 @@ impl Interpreter {
     pub fn new() -> Interpreter {
         let mut env = Environment::new();
         env.insert("clock", Value::BuiltinFunc("clock".to_string(), 0, clock));
-        Interpreter {
-            had_error: false,
-            env,
-        }
+        Interpreter { env }
     }
 
-    pub fn run_prompt(&mut self) -> Result<()> {
+    pub fn run_prompt(&mut self) -> io::Result<()> {
         let stdin = io::stdin();
         print!("> ");
         io::stdout().flush()?;
         for line in stdin.lock().lines() {
-            self.run(&line.unwrap(), true);
-            self.had_error = false;
+            match self.run(&line.unwrap()) {
+                Ok(v) => println!("{v}"),
+                Err(e) => eprintln!("{e}"),
+            }
             print!("> ");
             io::stdout().flush()?;
         }
@@ -44,52 +41,24 @@ impl Interpreter {
         Ok(())
     }
 
-    pub fn run_path<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
+    pub fn run_path<P: AsRef<Path>>(&mut self, path: P) -> Result<Value> {
         let mut s = String::new();
         let mut file = File::open(path)?;
         file.read_to_string(&mut s)?;
-        self.run(&s, false);
-        if self.had_error {
-            process::exit(65);
-        };
-        Ok(())
+        self.run(&s)
     }
 
-    fn run(&mut self, code: &str, print_value: bool) {
+    pub fn run(&mut self, code: &str) -> Result<Value> {
         let scanner = Scanner::new(code);
-        let stmts = match scanner
+        let stmts = scanner
             .scan_tokens()
-            .and_then(|tokens| Parser::new(tokens).parse())
-        {
-            Ok(x) => x,
-            Err(e) => {
-                self.error(e.to_string());
-                return;
-            }
-        };
+            .and_then(|tokens| Parser::new(tokens).parse())?;
 
+        let mut last_val = Value::Nil;
         for stmt in stmts {
-            if self.had_error {
-                break;
-            }
-            match stmt.interpret(&mut self.env) {
-                Ok(v) => {
-                    if print_value && Value::Nil != v {
-                        println!("{}", v);
-                    }
-                }
-                Err(e) => self.error(format!("{}", e)),
-            }
+            last_val = stmt.interpret(&mut self.env)?;
         }
-    }
-
-    fn error<S: AsRef<str>>(&mut self, message: S) {
-        self.report("", message.as_ref())
-    }
-
-    fn report<S: AsRef<str>>(&mut self, context: S, message: S) {
-        eprintln!("{}{}", context.as_ref(), message.as_ref());
-        self.had_error = true;
+        Ok(last_val)
     }
 }
 

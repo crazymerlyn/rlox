@@ -207,11 +207,10 @@ impl Parser {
             let value = self.assignment()?;
             match expr {
                 Expr::Variable(id) => Ok(Expr::Assign(id, Box::new(value))),
-                x => Err(ErrorKind::ParseError(
-                    equals,
-                    format!("Invalid assignment target: {}", x),
-                )
-                .into()),
+                x => Err(ErrorKind::ParseError {
+                    tok: equals,
+                    t: format!("Invalid assignment target: {}", x),
+                }),
             }
         } else {
             Ok(expr)
@@ -349,9 +348,10 @@ impl Parser {
                 self.consume(TokenType::RightParen, "Expect ')' after expression")?;
                 Ok(Expr::Grouping(Box::new(Grouping { expr })))
             }
-            _ => Err(
-                ErrorKind::ParseError(self.peek().clone(), "Expect expression".to_string()).into(),
-            ),
+            _ => Err(ErrorKind::ParseError {
+                tok: self.peek().clone(),
+                t: "Expect expression".to_string(),
+            }),
         }
     }
 
@@ -383,7 +383,10 @@ impl Parser {
             self.advance();
             Ok(result)
         } else {
-            Err(ErrorKind::ParseError(self.peek().clone(), error.to_string()).into())
+            Err(ErrorKind::ParseError {
+                tok: self.peek().clone(),
+                t: error.to_string(),
+            })
         }
     }
 
