@@ -182,9 +182,10 @@ impl Scanner {
             ' ' | '\t' | '\r' => {}
             '\n' => self.line += 1,
             _ => {
-                return Err(
-                    ErrorKind::ScanError(self.line, format!("Unexpected character: {}", c)).into(),
-                )
+                return Err(ErrorKind::ScanError(
+                    self.line,
+                    format!("Unexpected character: {}", c),
+                ))
             }
         }
         Ok(())
@@ -233,7 +234,7 @@ impl Scanner {
     }
 
     fn error(&self, s: String) -> Result<()> {
-        Err(From::from(ErrorKind::ScanError(self.line, s)))
+        Err(ErrorKind::ScanError(self.line, s))
     }
 
     fn advance(&mut self) -> char {

@@ -1,8 +1,10 @@
+use std::cell::RefCell;
 use std::fmt;
 use std::fs::File;
 use std::path::Path;
 
 use std::io::{self, BufRead, Read, Write};
+use std::rc::Rc;
 
 use anyhow::Result;
 
@@ -15,14 +17,16 @@ use crate::parser::Parser;
 use crate::scanner::Scanner;
 
 pub struct Interpreter {
-    env: Environment,
+    env: EnvRef,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         let mut env = Environment::new();
         env.insert("clock", Value::BuiltinFunc("clock".to_string(), 0, clock));
-        Interpreter { env }
+        Interpreter {
+            env: Rc::new(RefCell::new(env)),
+        }
     }
 
     pub fn run_prompt(&mut self) -> io::Result<()> {
@@ -56,7 +60,7 @@ impl Interpreter {
 
         let mut last_val = Value::Nil;
         for stmt in stmts {
-            last_val = stmt.interpret(&mut self.env)?;
+            last_val = stmt.interpret(self.env.clone())?;
         }
         Ok(last_val)
     }
@@ -64,70 +68,60 @@ impl Interpreter {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Environment {
-    maps: Vec<HashMap<String, Value>>,
+    map: HashMap<String, ValRef>,
+    parent: Option<Rc<RefCell<Environment>>>,
 }
+
+pub type EnvRef = Rc<RefCell<Environment>>;
 
 impl Environment {
     pub fn new() -> Environment {
         Environment {
-            maps: vec![HashMap::new()],
+            map: HashMap::new(),
+            parent: None,
         }
     }
 
-    pub fn push_local_scope(&mut self) {
-        self.maps.push(HashMap::new());
-    }
-
-    pub fn pop_scope(&mut self) {
-        if !self.maps.is_empty() {
-            self.maps.pop();
-        } else {
-            panic!("Trying to pop non-existant scope!");
+    pub fn wrap(parent: EnvRef) -> Environment {
+        Environment {
+            map: HashMap::new(),
+            parent: Some(parent),
         }
     }
 
-    pub fn get(&self, s: &str) -> Option<&Value> {
-        for map in self.maps.iter().rev() {
-            if let Some(v) = map.get(s) {
-                return Some(v);
-            }
+    pub fn get(&self, s: &str) -> Option<ValRef> {
+        if let Some(v) = self.map.get(s) {
+            return Some(v.clone());
+        }
+        if let Some(ref parent) = self.parent {
+            return parent.borrow().get(s);
         }
         None
     }
 
-    pub fn export_non_globals(&mut self) -> Vec<HashMap<String, Value>> {
-        self.maps.split_off(1)
-    }
-
-    pub fn import_non_globals(&mut self, maps: Vec<HashMap<String, Value>>) {
-        self.maps.truncate(1);
-        self.maps.extend(maps);
-    }
-
     pub fn insert(&mut self, s: &str, v: Value) {
-        let n = self.maps.len();
-        self.maps[n - 1].insert(s.to_owned(), v);
+        self.map.insert(s.to_owned(), Rc::new(RefCell::new(v)));
     }
 
     pub fn update(&mut self, s: &str, v: Value) -> Option<Value> {
-        self.maps
-            .iter_mut()
-            .rev()
-            .find_map(|map| map.get_mut(s))
-            .map(|val| {
-                *val = v.clone();
-                v
-            })
+        self.map.get_mut(s).map(|val| {
+            *val = Rc::new(RefCell::new(v.clone()));
+            v
+        })
     }
 }
 
 impl fmt::Display for Environment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, map) in self.maps.iter().enumerate() {
+        let mut i = 0;
+        let mut env = Some(Rc::new(RefCell::new(self.clone())));
+        while let Some(e) = env {
             writeln!(f, "Level: {}", i)?;
-            for (name, val) in map.iter() {
-                writeln!(f, "{} -> {}", name, val)?;
+            for (name, val) in e.borrow().map.iter() {
+                writeln!(f, "{} -> {}", name, val.borrow_mut())?;
             }
+            i += 1;
+            env = e.borrow().parent.clone();
         }
         Ok(())
     }

@@ -1,7 +1,10 @@
 use crate::errors::Result;
+use crate::interpreter::EnvRef;
 use crate::scanner::{Token, TokenType};
+use std::cell::RefCell;
 use std::convert::From;
 use std::fmt;
+use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
@@ -166,9 +169,11 @@ pub enum Value {
     Number(f64),
     String(String),
     BuiltinFunc(String, usize, BuitinFunc),
-    Func(Token, Vec<Token>, Box<Stmt>),
+    Func(Token, EnvRef, Vec<Token>, Box<Stmt>),
     Return(Box<Value>),
 }
+
+pub type ValRef = Rc<RefCell<Value>>;
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -178,7 +183,7 @@ impl fmt::Display for Value {
             Value::Number(n) => write!(f, "{}", n),
             Value::String(ref s) => write!(f, "\"{}\"", s),
             Value::BuiltinFunc(ref name, _, _) => write!(f, "<built-in function {}>", name),
-            Value::Func(ref tok, _, _) => write!(f, "<function {}>", tok.lexeme),
+            Value::Func(ref tok, _, _, _) => write!(f, "<function {}>", tok.lexeme),
             Value::Return(ref val) => write!(f, "return {};", val),
         }
     }

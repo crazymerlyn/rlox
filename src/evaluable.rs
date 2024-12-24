@@ -1,35 +1,42 @@
 use crate::ast::*;
 use crate::callable::Callable;
 use crate::errors::{ErrorKind, Result};
-use crate::interpreter::Environment;
+use crate::interpreter::EnvRef;
 
 pub trait Evaluable {
-    fn evaluate(&self, env: &mut Environment) -> Result<Value>;
+    fn evaluate(&self, env: EnvRef) -> Result<Value>;
 }
 
 impl Evaluable for Expr {
-    fn evaluate(&self, env: &mut Environment) -> Result<Value> {
+    fn evaluate(&self, env: EnvRef) -> Result<Value> {
         match *self {
             Expr::Literal(ref v) => Ok(v.clone()),
             Expr::Unary(ref u) => u.evaluate(env),
             Expr::Binary(ref b) => b.evaluate(env),
             Expr::Logical(ref l) => l.evaluate(env),
             Expr::Grouping(ref g) => g.evaluate(env),
-            Expr::Variable(ref id) => env.get(&id.name.lexeme).cloned().ok_or(
-                ErrorKind::EvaluateError(format!("Undefined variable: {}", id.name.lexeme)).into(),
-            ),
+            Expr::Variable(ref id) => env
+                .borrow()
+                .get(&id.name.lexeme)
+                .map(|v| v.borrow().clone())
+                .ok_or(ErrorKind::EvaluateError(format!(
+                    "Undefined variable: {}",
+                    id.name.lexeme
+                ))),
             Expr::Assign(ref id, ref e) => {
-                let value = e.evaluate(env)?;
-                env.update(&id.name.lexeme, value).ok_or(
-                    ErrorKind::EvaluateError(format!("Undefined variable: {}", id.name.lexeme))
-                        .into(),
-                )
+                let value = e.evaluate(env.clone())?;
+                env.borrow_mut()
+                    .update(&id.name.lexeme, value)
+                    .ok_or(ErrorKind::EvaluateError(format!(
+                        "Undefined variable: {}",
+                        id.name.lexeme
+                    )))
             }
             Expr::Call(ref expr, ref args) => {
-                let func = expr.evaluate(env)?;
+                let func = expr.evaluate(env.clone())?;
                 let mut values = vec![];
                 for arg in args {
-                    values.push(arg.evaluate(env)?)
+                    values.push(arg.evaluate(env.clone())?)
                 }
                 func.call(env, values)
             }
@@ -38,21 +45,21 @@ impl Evaluable for Expr {
 }
 
 impl Evaluable for UnaryExpr {
-    fn evaluate(&self, env: &mut Environment) -> Result<Value> {
+    fn evaluate(&self, env: EnvRef) -> Result<Value> {
         match self.op {
             UnaryOperator::Bang => Ok(Value::Bool(!self.expr.evaluate(env)?.is_truthy())),
             UnaryOperator::Minus => match self.expr.evaluate(env)? {
                 Value::Number(n) => Ok(Value::Number(-n)),
-                x => Err(ErrorKind::EvaluateError(format!("Can't negate {}", x)).into()),
+                x => Err(ErrorKind::EvaluateError(format!("Can't negate {}", x))),
             },
         }
     }
 }
 
 impl Evaluable for BinaryExpr {
-    fn evaluate(&self, env: &mut Environment) -> Result<Value> {
-        let left = self.left.evaluate(env)?;
-        let right = self.right.evaluate(env)?;
+    fn evaluate(&self, env: EnvRef) -> Result<Value> {
+        let left = self.left.evaluate(env.clone())?;
+        let right = self.right.evaluate(env.clone())?;
 
         match self.op {
             BinaryOperator::Minus
@@ -83,10 +90,10 @@ impl Evaluable for BinaryExpr {
                     } else if let Value::String(r) = right {
                         Ok(Value::String(format!("{}{}", l, r)))
                     } else {
-                        Err(
-                            ErrorKind::EvaluateError(format!("Can't add {} to a number", right))
-                                .into(),
-                        )
+                        Err(ErrorKind::EvaluateError(format!(
+                            "Can't add {} to a number",
+                            right
+                        )))
                     }
                 } else if let Value::String(l) = left {
                     if let Value::String(r) = right {
@@ -99,10 +106,10 @@ impl Evaluable for BinaryExpr {
                 } else if let Value::String(r) = right {
                     Ok(Value::String(format!("{}{}", left, r)))
                 } else {
-                    Err(
-                        ErrorKind::EvaluateError(format!("Can't add {} and {}", left, right))
-                            .into(),
-                    )
+                    Err(ErrorKind::EvaluateError(format!(
+                        "Can't add {} and {}",
+                        left, right
+                    )))
                 }
             }
             BinaryOperator::EqualEqual => Ok(Value::Bool(left == right)),
@@ -113,8 +120,8 @@ impl Evaluable for BinaryExpr {
 }
 
 impl Evaluable for LogicalExpr {
-    fn evaluate(&self, env: &mut Environment) -> Result<Value> {
-        let left = self.left.evaluate(env)?;
+    fn evaluate(&self, env: EnvRef) -> Result<Value> {
+        let left = self.left.evaluate(env.clone())?;
         if self.op == LogicalOperator::Or {
             if left.is_truthy() {
                 return Ok(left);
@@ -122,21 +129,22 @@ impl Evaluable for LogicalExpr {
         } else if !left.is_truthy() {
             return Ok(left);
         }
-        self.right.evaluate(env)
+        self.right.evaluate(env.clone())
     }
 }
 
 fn number(value: &Value) -> Result<f64> {
     match *value {
         Value::Number(n) => Ok(n),
-        _ => Err(
-            ErrorKind::EvaluateError(format!("Expected a number, instead got: {}", value)).into(),
-        ),
+        _ => Err(ErrorKind::EvaluateError(format!(
+            "Expected a number, instead got: {}",
+            value
+        ))),
     }
 }
 
 impl Evaluable for Grouping {
-    fn evaluate(&self, env: &mut Environment) -> Result<Value> {
+    fn evaluate(&self, env: EnvRef) -> Result<Value> {
         self.expr.evaluate(env)
     }
 }
